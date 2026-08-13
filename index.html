@@ -1,0 +1,3126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PEDAL</title>
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="favicon-64.png">
+    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png">
+    <link rel="icon" type="image/png" sizes="196x196" href="favicon-196.png">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'light-bg': 'rgba(255,255,255,0.06)',
+                        'light-card': 'rgba(255,255,255,0.04)',
+                        'dark-text': '#e0ddd8',
+                        'medium-text': '#8a8a90',
+                        'light-text': '#b0b0b8',
+                        'accent-red': '#ff3b30',
+                        'accent-gold': '#d4a853',
+                        'warm-bg': 'rgba(255,255,255,0.05)',
+                        'warm-card': 'rgba(255,255,255,0.03)',
+                        'warm-border': 'rgba(255,255,255,0.08)',
+                        'warm-muted': '#6a6a70',
+                    },
+                    fontFamily: {
+                        'display': ['Fraunces', 'Georgia', 'serif'],
+                        'body': ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #0e0e12;
+            color: #e0ddd8;
+            overflow-x: hidden;
+            letter-spacing: 0.01em;
+        }
+
+        .card {
+            background-color: rgba(255,255,255,0.04);
+            border-radius: 2rem;
+            box-shadow: 0 2px 4px 0 rgba(0,0,0,0.00), 0 1px 2px -1px rgba(0,0,0,0.00), 0 4px 6px -1px rgba(0,0,0,0.08);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .speedometer {
+            position: relative;
+            width: min(420px, 80vw);
+            height: min(420px, 80vw);
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        @media (max-width: 640px) {
+            .speedometer {
+                width: min(320px, 75vw);
+                height: min(320px, 75vw);
+            }
+        }
+
+        #speedometerCanvas {
+            display: block;
+        }
+
+        .control-btn {
+            transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.15s ease;
+            border-radius: 1rem;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            background: none;
+            border: none;
+            box-shadow: none;
+            padding: 8px;
+            position: relative;
+            /* 按钮内部 SVG 阴影模拟踏板悬浮感 */
+            filter: drop-shadow(0 6px 3px rgba(0,0,0,0.45)) drop-shadow(0 2px 1px rgba(0,0,0,0.3));
+        }
+
+        .control-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            filter: none;
+        }
+
+        .control-btn:active:not(:disabled),
+        .control-btn.is-pressed {
+            transform: translateY(5px);
+            transition: transform 0.06s ease-out, filter 0.06s ease-out;
+            filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
+        }
+
+        .acceleration-btn {
+            background: none;
+            color: #8c8c94;
+        }
+
+        .acceleration-btn:active:not(:disabled),
+        .acceleration-btn.is-pressed {
+            color: #e8e6e2;
+            filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5)) drop-shadow(0 0 6px rgba(255,255,255,0.15));
+        }
+
+        .brake-btn {
+            background: none;
+            color: #d4d4dc;
+        }
+
+        .brake-btn:active:not(:disabled),
+        .brake-btn.is-pressed {
+            color: #ff3b30;
+            filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5)) drop-shadow(0 0 8px rgba(255,59,48,0.55));
+        }
+
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8a90' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1rem;
+        }
+
+        select option {
+            background-color: #1a1a1e;
+            color: #e0ddd8;
+        }
+
+        /* 桌面端：三列布局 */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        @media (min-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 1fr 1.4fr 1fr;
+                gap: 1.5rem;
+            }
+        }
+
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .main-layout {
+                grid-template-columns: 1fr 1.4fr;
+                gap: 1.25rem;
+            }
+            .main-layout .left-panel {
+                grid-column: 1;
+                grid-row: 1;
+            }
+            .main-layout .center-panel {
+                grid-column: 2;
+                grid-row: 1 / 3;
+            }
+            .main-layout .right-panel {
+                grid-column: 1;
+                grid-row: 2;
+            }
+        }
+
+        /* 手机端：车型选择折叠 */
+        @media (max-width: 767px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+            .left-panel .card {
+                padding: 1rem;
+            }
+            .left-panel .car-info-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 0.5rem;
+            }
+            .center-panel .card {
+                padding: 1rem;
+            }
+        }
+
+        /* 手机端底部固定控制按钮 */
+        @media (max-width: 767px) {
+            .mobile-controls {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: rgba(14,14,18,0.9);
+                padding: 12px 16px;
+                padding-bottom: max(12px, env(safe-area-inset-bottom));
+                z-index: 100;
+                display: flex;
+                gap: 12px;
+            }
+            .mobile-controls button {
+                flex: 1;
+                min-height: 56px;
+            }
+            body {
+                padding-bottom: 90px;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .mobile-controls {
+                display: none;
+            }
+        }
+
+        /* 桌面端隐藏移动端按钮区 */
+        .desktop-controls {
+            display: flex;
+        }
+        @media (max-width: 767px) {
+            .desktop-controls {
+                display: none;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .slide-up {
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen p-3 sm:p-4 md:p-6 lg:p-8 pb-32 md:pb-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="mb-4 md:mb-6 lg:mb-8 text-center fade-in">
+            <h1 class="text-2xl md:text-3xl font-semibold mb-1 md:mb-2 tracking-tight" style="font-family: 'Fraunces', Georgia, serif;">PEDAL</h1>
+        </header>
+
+        <div class="main-layout">
+            <!-- Left Panel - Car Selection -->
+            <div class="left-panel">
+                <div class="card p-4 md:p-6 slide-up">
+                    <h2 class="text-base md:text-lg font-semibold mb-3 md:mb-4 flex items-center">
+                        选择车型
+                    </h2>
+
+                    <!-- Brand Selection -->
+                    <div class="mb-3 md:mb-4">
+                        <label class="block text-xs md:text-sm text-medium-text mb-1 md:mb-2" for="brandSelect">品牌</label>
+                        <select id="brandSelect" class="w-full bg-warm-bg border border-warm-border rounded-2xl p-2.5 md:p-3 text-sm md:text-base text-dark-text focus:outline-none focus:border-accent-gold transition-colors" aria-label="选择品牌">
+                            <option value="">选择品牌</option>
+                        </select>
+                    </div>
+
+                    <!-- Model Selection -->
+                    <div class="mb-4 md:mb-6">
+                        <label class="block text-xs md:text-sm text-medium-text mb-1 md:mb-2" for="modelSelect">车型</label>
+                        <select id="modelSelect" class="w-full bg-warm-bg border border-warm-border rounded-2xl p-2.5 md:p-3 text-sm md:text-base text-dark-text focus:outline-none focus:border-accent-gold transition-colors" disabled aria-label="选择车型">
+                            <option value="">先选择品牌</option>
+                        </select>
+                    </div>
+
+                    <!-- Selected Car Info -->
+                    <div id="carInfo" class="hidden">
+                        <div class="bg-warm-card rounded-2xl p-3 md:p-4 mb-4 border border-warm-border">
+                            <div class="flex items-center justify-between mb-2 md:mb-3">
+                                <h3 id="carName" class="text-sm md:text-lg font-semibold"></h3>
+                                <span id="carYear" class="text-xs md:text-sm text-medium-text"></span>
+                            </div>
+
+                            <div class="car-info-grid grid grid-cols-2 gap-2 md:gap-3">
+                                <div class="bg-warm-bg rounded-xl p-2 md:p-3">
+                                    <div class="text-xs text-medium-text mb-0.5 md:mb-1">0-100 km/h</div>
+                                    <div id="accelerationTime" class="text-base md:text-xl font-semibold text-accent-gold"></div>
+                                </div>
+                                <div class="bg-warm-bg rounded-xl p-2 md:p-3">
+                                    <div class="text-xs text-medium-text mb-0.5 md:mb-1">最高时速</div>
+                                    <div id="maxSpeed" class="text-base md:text-xl font-semibold text-dark-text"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Panel - Speedometer -->
+            <div class="center-panel">
+                <div class="card p-4 md:p-6 flex flex-col items-center slide-up" style="animation-delay: 0.1s;">
+
+                    <!-- Speedometer -->
+                    <div class="speedometer mb-4 md:mb-6">
+                        <canvas id="speedometerCanvas" style="width:100%;height:100%;"></canvas>
+                    </div>
+
+                    <!-- Desktop Control Buttons -->
+                    <div class="desktop-controls hidden md:flex md:gap-6 w-full max-w-xs justify-center items-end">
+                        <button id="brakeBtn" class="brake-btn control-btn flex items-center justify-center" disabled aria-label="刹车减速">
+                            <svg viewBox="0 0 60 80" class="h-20 md:h-24" fill="currentColor" stroke="none">
+                                <!-- 刹车踏板：宽矩形，顶部略圆 -->
+                                <path d="M 10 8 Q 10 4 14 4 L 46 4 Q 50 4 50 8 L 52 70 Q 52 76 46 76 L 14 76 Q 8 76 8 70 Z"/>
+                                <defs>
+                                    <linearGradient id="brakeMetal" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="rgba(255,255,255,0.28)"/>
+                                        <stop offset="35%" stop-color="rgba(255,255,255,0.08)"/>
+                                        <stop offset="65%" stop-color="rgba(0,0,0,0.12)"/>
+                                        <stop offset="100%" stop-color="rgba(0,0,0,0.35)"/>
+                                    </linearGradient>
+                                    <linearGradient id="brakeRubber" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stop-color="rgba(0,0,0,0.35)"/>
+                                        <stop offset="15%" stop-color="rgba(0,0,0,0.05)"/>
+                                        <stop offset="50%" stop-color="rgba(255,255,255,0.1)"/>
+                                        <stop offset="85%" stop-color="rgba(0,0,0,0.05)"/>
+                                        <stop offset="100%" stop-color="rgba(0,0,0,0.35)"/>
+                                    </linearGradient>
+                                </defs>
+                                <path d="M 10 8 Q 10 4 14 4 L 46 4 Q 50 4 50 8 L 52 70 Q 52 76 46 76 L 14 76 Q 8 76 8 70 Z" fill="url(#brakeMetal)"/>
+                                <!-- 橡胶质感横向纹理槽（5条，中间亮两侧暗模拟凹陷反光） -->
+                                <rect x="16" y="18" width="28" height="3" rx="1.5" fill="rgba(0,0,0,0.45)"/>
+                                <rect x="16" y="18" width="28" height="3" rx="1.5" fill="url(#brakeRubberM)"/>
+                                <rect x="16" y="28" width="28" height="3" rx="1.5" fill="rgba(0,0,0,0.45)"/>
+                                <rect x="16" y="28" width="28" height="3" rx="1.5" fill="url(#brakeRubberM)"/>
+                                <rect x="16" y="38" width="28" height="3" rx="1.5" fill="rgba(0,0,0,0.45)"/>
+                                <rect x="16" y="38" width="28" height="3" rx="1.5" fill="url(#brakeRubberM)"/>
+                                <rect x="16" y="48" width="28" height="3" rx="1.5" fill="rgba(0,0,0,0.45)"/>
+                                <rect x="16" y="48" width="28" height="3" rx="1.5" fill="url(#brakeRubberM)"/>
+                                <rect x="16" y="58" width="28" height="3" rx="1.5" fill="rgba(0,0,0,0.45)"/>
+                                <rect x="16" y="58" width="28" height="3" rx="1.5" fill="url(#brakeRubberM)"/>
+                                <!-- 顶部高光边（模拟金属边缘反光） -->
+                                <path d="M 14 5 Q 12 5 11 7 L 11 12" stroke="rgba(255,255,255,0.35)" stroke-width="1" stroke-linecap="round" fill="none"/>
+                            </svg>
+                        </button>
+                        <button id="accelerateBtn" class="acceleration-btn control-btn flex items-center justify-center" disabled aria-label="油门加速">
+                            <svg viewBox="0 0 50 80" class="h-20 md:h-24" fill="currentColor" stroke="none">
+                                <!-- 油门踏板：窄长，略微倾斜的楔形 -->
+                                <path d="M 14 6 Q 14 2 18 2 L 36 2 Q 40 2 40 6 L 42 68 Q 42 76 36 78 L 18 78 Q 12 76 10 68 Z"/>
+                                <defs>
+                                    <linearGradient id="accelMetal" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="rgba(255,255,255,0.28)"/>
+                                        <stop offset="35%" stop-color="rgba(255,255,255,0.08)"/>
+                                        <stop offset="65%" stop-color="rgba(0,0,0,0.12)"/>
+                                        <stop offset="100%" stop-color="rgba(0,0,0,0.35)"/>
+                                    </linearGradient>
+                                    <linearGradient id="accelRubber" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stop-color="rgba(0,0,0,0.35)"/>
+                                        <stop offset="15%" stop-color="rgba(0,0,0,0.05)"/>
+                                        <stop offset="50%" stop-color="rgba(255,255,255,0.1)"/>
+                                        <stop offset="85%" stop-color="rgba(0,0,0,0.05)"/>
+                                        <stop offset="100%" stop-color="rgba(0,0,0,0.35)"/>
+                                    </linearGradient>
+                                </defs>
+                                <!-- 金属光泽覆盖层 -->
+                                <path d="M 14 6 Q 14 2 18 2 L 36 2 Q 40 2 40 6 L 42 68 Q 42 76 36 78 L 18 78 Q 12 76 10 68 Z" fill="url(#accelMetal)"/>
+                                <!-- 橡胶质感横向纹理槽（6条） -->
+                                <rect x="16" y="14" width="20" height="2.5" rx="1.25" fill="rgba(0,0,0,0.45)"/>
+                                <rect x="16" y="14" width="20" height="2.5" rx="1.25" fill="url(#accelRubberM)"/>
+                                <rect x="16" y="23" width="20" height="2.5" rx="1.25" fill="rgba(0,0,0,0.45)"/>
+                                <rect x="16" y="23" width="20" height="2.5" rx="1.25" fill="url(#accelRubberM)"/>
+                                <rect x="16" y="32" width="20" height="2.5" rx="1.25" fill="rgba(0,0,0,0.45)"/>
+                                <rect x="16" y="32" width="20" height="2.5" rx="1.25" fill="url(#accelRubberM)"/>
+                                <rect x="16" y="41" width="20" height="2.5" rx="1.25" fill="rgba(0,0,0,0.45)"/>
+                                <rect x="16" y="41" width="20" height="2.5" rx="1.25" fill="url(#accelRubberM)"/>
+                                <rect x="16" y="50" width="20" height="2.5" rx="1.25" fill="rgba(0,0,0,0.45)"/>
+                                <rect x="16" y="50" width="20" height="2.5" rx="1.25" fill="url(#accelRubberM)"/>
+                                <rect x="16" y="59" width="20" height="2.5" rx="1.25" fill="rgba(0,0,0,0.45)"/>
+                                <rect x="16" y="59" width="20" height="2.5" rx="1.25" fill="url(#accelRubberM)"/>
+                                <!-- 顶部高光边 -->
+                                <path d="M 18 3 Q 16 3 15 5 L 15 10" stroke="rgba(255,255,255,0.35)" stroke-width="1" stroke-linecap="round" fill="none"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Right Panel - Vehicle Specs -->
+            <div class="right-panel">
+                <div class="card p-4 md:p-6 slide-up" style="animation-delay: 0.2s;">
+                    <h2 class="text-base md:text-lg font-semibold mb-3 md:mb-4">车辆参数</h2>
+                    <div id="specsPanel" class="hidden space-y-2 md:space-y-3">
+                        <div class="bg-warm-bg rounded-xl p-2.5 md:p-3">
+                            <div class="text-xs text-medium-text mb-0.5">发动机</div>
+                            <div id="specEngine" class="text-sm md:text-base text-dark-text"></div>
+                        </div>
+                        <div class="bg-warm-bg rounded-xl p-2.5 md:p-3">
+                            <div class="text-xs text-medium-text mb-0.5">最大功率</div>
+                            <div id="specPower" class="text-sm md:text-base text-dark-text"></div>
+                        </div>
+                        <div class="bg-warm-bg rounded-xl p-2.5 md:p-3">
+                            <div class="text-xs text-medium-text mb-0.5">变速箱</div>
+                            <div id="specTransmission" class="text-sm md:text-base text-dark-text"></div>
+                        </div>
+                        <div class="bg-warm-bg rounded-xl p-2.5 md:p-3">
+                            <div class="text-xs text-medium-text mb-0.5">100-0刹车距离</div>
+                            <div id="specBrake" class="text-sm md:text-base text-dark-text"></div>
+                        </div>
+                        <div class="bg-warm-bg rounded-xl p-2.5 md:p-3">
+                            <div class="text-xs text-medium-text mb-0.5">动力类型</div>
+                            <div id="specType" class="text-sm md:text-base text-dark-text"></div>
+                        </div>
+                    </div>
+                    <div id="specsPlaceholder" class="text-center text-sm text-medium-text py-6 md:py-8">
+                        选择车型后显示详细参数
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Mobile Fixed Controls -->
+    <div class="mobile-controls md:hidden fixed bottom-0 left-0 right-0 p-3 z-50" style="background: rgba(14,14,18,0.95); padding-bottom: max(12px, env(safe-area-inset-bottom));">
+        <div class="flex gap-8 max-w-7xl mx-auto justify-center items-end">
+            <button id="brakeBtnMobile" class="brake-btn control-btn flex items-center justify-center" disabled aria-label="刹车减速">
+                <svg viewBox="0 0 60 80" class="h-16" fill="currentColor" stroke="none">
+                    <defs>
+                        <linearGradient id="brakeMetalM" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="rgba(255,255,255,0.28)"/>
+                            <stop offset="35%" stop-color="rgba(255,255,255,0.08)"/>
+                            <stop offset="65%" stop-color="rgba(0,0,0,0.12)"/>
+                            <stop offset="100%" stop-color="rgba(0,0,0,0.35)"/>
+                        </linearGradient>
+                        <linearGradient id="brakeRubberM" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="rgba(0,0,0,0.35)"/>
+                            <stop offset="15%" stop-color="rgba(0,0,0,0.05)"/>
+                            <stop offset="50%" stop-color="rgba(255,255,255,0.1)"/>
+                            <stop offset="85%" stop-color="rgba(0,0,0,0.05)"/>
+                            <stop offset="100%" stop-color="rgba(0,0,0,0.35)"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M 10 8 Q 10 4 14 4 L 46 4 Q 50 4 50 8 L 52 70 Q 52 76 46 76 L 14 76 Q 8 76 8 70 Z"/>
+                    <path d="M 10 8 Q 10 4 14 4 L 46 4 Q 50 4 50 8 L 52 70 Q 52 76 46 76 L 14 76 Q 8 76 8 70 Z" fill="url(#brakeMetalM)"/>
+                    <rect x="16" y="18" width="28" height="3" rx="1.5" fill="rgba(0,0,0,0.45)"/>
+                    <rect x="16" y="18" width="28" height="3" rx="1.5" fill="url(#brakeRubberM)"/>
+                    <rect x="16" y="28" width="28" height="3" rx="1.5" fill="rgba(0,0,0,0.45)"/>
+                    <rect x="16" y="28" width="28" height="3" rx="1.5" fill="url(#brakeRubberM)"/>
+                    <rect x="16" y="38" width="28" height="3" rx="1.5" fill="rgba(0,0,0,0.45)"/>
+                    <rect x="16" y="38" width="28" height="3" rx="1.5" fill="url(#brakeRubberM)"/>
+                    <rect x="16" y="48" width="28" height="3" rx="1.5" fill="rgba(0,0,0,0.45)"/>
+                    <rect x="16" y="48" width="28" height="3" rx="1.5" fill="url(#brakeRubberM)"/>
+                    <rect x="16" y="58" width="28" height="3" rx="1.5" fill="rgba(0,0,0,0.45)"/>
+                    <rect x="16" y="58" width="28" height="3" rx="1.5" fill="url(#brakeRubberM)"/>
+                    <path d="M 14 5 Q 12 5 11 7 L 11 12" stroke="rgba(255,255,255,0.35)" stroke-width="1" stroke-linecap="round" fill="none"/>
+                </svg>
+            </button>
+            <button id="accelerateBtnMobile" class="acceleration-btn control-btn flex items-center justify-center" disabled aria-label="油门加速">
+                <svg viewBox="0 0 50 80" class="h-16" fill="currentColor" stroke="none">
+                    <defs>
+                        <linearGradient id="accelMetalM" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="rgba(255,255,255,0.28)"/>
+                            <stop offset="35%" stop-color="rgba(255,255,255,0.08)"/>
+                            <stop offset="65%" stop-color="rgba(0,0,0,0.12)"/>
+                            <stop offset="100%" stop-color="rgba(0,0,0,0.35)"/>
+                        </linearGradient>
+                        <linearGradient id="accelRubberM" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="rgba(0,0,0,0.35)"/>
+                            <stop offset="15%" stop-color="rgba(0,0,0,0.05)"/>
+                            <stop offset="50%" stop-color="rgba(255,255,255,0.1)"/>
+                            <stop offset="85%" stop-color="rgba(0,0,0,0.05)"/>
+                            <stop offset="100%" stop-color="rgba(0,0,0,0.35)"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M 14 6 Q 14 2 18 2 L 36 2 Q 40 2 40 6 L 42 68 Q 42 76 36 78 L 18 78 Q 12 76 10 68 Z"/>
+                    <path d="M 14 6 Q 14 2 18 2 L 36 2 Q 40 2 40 6 L 42 68 Q 42 76 36 78 L 18 78 Q 12 76 10 68 Z" fill="url(#accelMetalM)"/>
+                    <rect x="16" y="14" width="20" height="2.5" rx="1.25" fill="rgba(0,0,0,0.45)"/>
+                    <rect x="16" y="14" width="20" height="2.5" rx="1.25" fill="url(#accelRubberM)"/>
+                    <rect x="16" y="23" width="20" height="2.5" rx="1.25" fill="rgba(0,0,0,0.45)"/>
+                    <rect x="16" y="23" width="20" height="2.5" rx="1.25" fill="url(#accelRubberM)"/>
+                    <rect x="16" y="32" width="20" height="2.5" rx="1.25" fill="rgba(0,0,0,0.45)"/>
+                    <rect x="16" y="32" width="20" height="2.5" rx="1.25" fill="url(#accelRubberM)"/>
+                    <rect x="16" y="41" width="20" height="2.5" rx="1.25" fill="rgba(0,0,0,0.45)"/>
+                    <rect x="16" y="41" width="20" height="2.5" rx="1.25" fill="url(#accelRubberM)"/>
+                    <rect x="16" y="50" width="20" height="2.5" rx="1.25" fill="rgba(0,0,0,0.45)"/>
+                    <rect x="16" y="50" width="20" height="2.5" rx="1.25" fill="url(#accelRubberM)"/>
+                    <rect x="16" y="59" width="20" height="2.5" rx="1.25" fill="rgba(0,0,0,0.45)"/>
+                    <rect x="16" y="59" width="20" height="2.5" rx="1.25" fill="url(#accelRubberM)"/>
+                    <path d="M 18 3 Q 16 3 15 5 L 15 10" stroke="rgba(255,255,255,0.35)" stroke-width="1" stroke-linecap="round" fill="none"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+    // ============================================================
+    // 常量定义
+    // ============================================================
+    const CONSTANTS = {
+        SPEEDOMETER_START_ANGLE: -135,    // 速度表起始角度
+        SPEEDOMETER_END_ANGLE: 135,       // 速度表结束角度
+        SPEEDOMETER_ANGLE_RANGE: 270,     // 速度表角度范围
+        IDLE_RPM: 800,                    // 怠速 RPM
+        IDLE_RETURN_RATE: 2000,           // 停车后RPM回落到怠速的速率（rpm/s，缓慢回落）
+        LOW_SPEED_RPM_BLEND: 10,          // 低速RPM混合阈值（km/h，低于此速度目标RPM向怠速平滑过渡）
+        MAX_RPM: 8000,                    // 转速表量程上限
+        REDLINE_RPM: 7000,                // 红线 RPM（红线区起始）
+        NATURAL_DECEL: 3.6,              // 滑行基础减速 km/h/s（约1 m/s²，含滚动阻力）
+        AIR_RESISTANCE_COEFF: 0.0005,    // 空气阻力系数
+        ROLLING_RESISTANCE: 0.3,         // 滚动阻力 m/s²
+        // 换挡策略：基于真实齿比序列计算换挡点
+        // 每个档位在红线RPM下能达到的最高速度 = maxSpeed * (最高档齿比 / 该档齿比)
+        // 换挡点 = 该档位最高速度 * SHIFT_RPM_RATIO（全油门在95%红线时换挡）
+        SHIFT_RPM_RATIO: 0.95,           // 全油门换挡RPM比例（95%红线，约6650 RPM）
+        SHIFT_1TO2_BONUS: 0.03,          // 1→2档换挡点额外提升（1档齿比大、易打滑，需更高转速）
+        // 真实变速箱齿比序列（参考ZF 8HP、Aisin 6AT、Getrag 7DCT等）
+        GEAR_RATIOS: {
+            5: [3.50, 2.10, 1.40, 1.00, 0.80],           // 5MT
+            6: [3.60, 2.10, 1.40, 1.00, 0.80, 0.70],     // 6AT/6MT
+            7: [4.30, 2.90, 2.10, 1.60, 1.20, 1.00, 0.80], // 7DCT
+            8: [4.71, 3.14, 2.10, 1.67, 1.29, 1.00, 0.84, 0.67], // ZF 8HP
+            9: [4.71, 3.14, 2.10, 1.67, 1.29, 1.00, 0.84, 0.67, 0.58], // ZF 9HP
+            10: [4.70, 2.99, 2.15, 1.77, 1.35, 1.00, 0.86, 0.80, 0.66, 0.60], // 福特/丰田 10AT
+        },
+        // 档位滞回（Hysteresis）：降档点比升档点低，避免频繁换挡
+        SHIFT_HYSTERESIS_RATIO: 0.06,    // 降档滞回比例（相对 maxSpeed）
+        BRAKE_DOWNSHIFT_BONUS: 0.08,     // 刹车时额外降档偏移（相对 maxSpeed，更积极降档）
+        // 换挡过渡时长（秒）
+        SHIFT_UP_DURATION: 0.30,         // 升挡过渡（RPM骤降）
+        SHIFT_DOWN_DURATION: 0.45,       // 降挡过渡（RPM先降后升，更长）
+        // 换挡期间扭矩中断（模拟离合器分离）
+        // AT变速箱液力变矩器有缓冲，扭矩中断较轻；DCT稍明显但仍有限
+        SHIFT_TORQUE_CUT: 0.60,          // 换挡期间驱动力保留比例（60%，轻微顿挫）
+        // 发动机制动：刹车时RPM下降速率随档位变化（低档更强）
+        ENGINE_BRAKE_BASE: 3500,         // 基础发动机制动RPM下降速率
+        ENGINE_BRAKE_GEAR_FACTOR: 600,   // 每低一档额外的制动强度
+        // RPM变化速率（rpm/s）
+        ACCEL_RPM_RATE: 8000,            // 加速时RPM快速上升速率
+        STEADY_RPM_RATE: 2500,           // 稳态时RPM缓慢变化速率
+        // 阈值
+        SHIFT_HALF_WIDTH: 5,             // 换挡凹陷半宽 km/h
+        COAST_ENGINE_BRAKE_REF_SPEED: 60, // 滑行发动机制动参考车速 km/h
+        // 100-0 制动反推常量（100km/h = 27.78 m/s）
+        BRAKE_REF_SPEED_MS: 27.78,
+        // 制动系统参数（真实车辆刹车特性）
+        BRAKE_DECEL_MAX: 42,             // 最大刹车减速度上限 km/h/s（约11.7 m/s²，轮胎抓地力极限）
+        BRAKE_DECEL_LOW_SPEED_FACTOR: 0.7, // 低速时刹车效率因子（ABS接近停车时降低）
+        BRAKE_LOW_SPEED_THRESHOLD: 20,   // 低速刹车效率下降阈值 km/h
+        // 发动机制动减速度（km/h/s，燃油车松油门/刹车时叠加）
+        ENGINE_BRAKE_DECEL_BASE: 3.0,    // 基础发动机制动减速度
+        ENGINE_BRAKE_DECEL_GEAR_FACTOR: 1.5, // 每低一档额外的发动机制动减速度
+        // 电动车动能回收减速度（km/h/s）
+        REGEN_DECEL_BASE: 5.0,           // 基础动能回收减速度
+        REGEN_DECEL_HIGH_SPEED_FACTOR: 1.5, // 高速时动能回收增强因子
+        // 重复使用的颜色常量（避免硬编码散落各处）
+        COLORS: {
+            ledAmber: { r: 255, g: 140, b: 50 }, // LED琥珀色（速度/档位点阵显示）
+        },
+    };
+
+    // ============================================================
+    // 数据层 - 车型数据
+    // ============================================================
+    const carData = {
+    "BMW": [
+        { model: "325Li", year: 2023, acceleration: 7.9, maxSpeed: 233, engine: "2.0L 涡轮增压直四", power: "184马力", brakePerformance: 37, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "530Li", year: 2023, acceleration: 7.0, maxSpeed: 250, engine: "2.0L 涡轮增压直四", power: "245马力", brakePerformance: 36, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "X3 xDrive30i", year: 2023, acceleration: 6.8, maxSpeed: 230, engine: "2.0L 涡轮增压直四", power: "245马力", brakePerformance: 37, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.55 },
+        { model: "i3 eDrive35L", year: 2023, acceleration: 6.2, maxSpeed: 180, engine: "单电机电动", power: "286马力", brakePerformance: 35, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "M340i xDrive", year: 2023, acceleration: 4.4, maxSpeed: 250, engine: "3.0L 涡轮增压直六", power: "374马力", brakePerformance: 33, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.7 },
+        { model: "X5 xDrive40Li", year: 2023, acceleration: 6.0, maxSpeed: 238, engine: "3.0T 涡轮增压直六（48V轻混）", power: "381马力", brakePerformance: 37, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.65 },
+        { model: "i4 eDrive40", year: 2023, acceleration: 5.7, maxSpeed: 182, engine: "后置单电机电动", power: "340马力", brakePerformance: 37, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.90 },
+        { model: "iX3", year: 2023, acceleration: 6.8, maxSpeed: 180, engine: "后置单电机电动", power: "286马力", brakePerformance: 37, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.88 },
+        { model: "X1 sDrive20Li", year: 2023, acceleration: 9.2, maxSpeed: 206, engine: "1.5T 涡轮增压三缸", power: "156马力", brakePerformance: 39, isEV: false, shiftCount: 7, shiftIntensity: 0.09, torqueCurve: "peaky", tractionBuildup: 0.58 }
+    ],
+    "Mercedes-Benz": [
+        { model: "C 260 L", year: 2023, acceleration: 7.8, maxSpeed: 236, engine: "1.5L 涡轮增压直四+电机（48V轻混）", power: "204马力", brakePerformance: 37, isEV: false, shiftCount: 9, shiftIntensity: 0.08, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "E 300 L", year: 2023, acceleration: 6.9, maxSpeed: 250, engine: "2.0L 涡轮增压直四", power: "258马力", brakePerformance: 36, isEV: false, shiftCount: 9, shiftIntensity: 0.08, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "GLC 300 L", year: 2023, acceleration: 6.9, maxSpeed: 235, engine: "2.0L 涡轮增压直四", power: "258马力", brakePerformance: 36, isEV: false, shiftCount: 9, shiftIntensity: 0.09, torqueCurve: "peaky", tractionBuildup: 0.55 },
+        { model: "EQE 350", year: 2023, acceleration: 6.7, maxSpeed: 180, engine: "单电机电动", power: "292马力", brakePerformance: 35, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "AMG C 43", year: 2023, acceleration: 4.9, maxSpeed: 250, engine: "2.0L 涡轮增压直四+电机", power: "408马力", brakePerformance: 32, isEV: false, shiftCount: 9, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.7 },
+        { model: "A 200 L", year: 2024, acceleration: 8.9, maxSpeed: 230, engine: "1.3T 涡轮增压直四", power: "163马力", brakePerformance: 37, isEV: false, shiftCount: 7, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.58 },
+        { model: "GLB 200", year: 2024, acceleration: 10.0, maxSpeed: 200, engine: "1.3T 涡轮增压直四", power: "163马力", brakePerformance: 39, isEV: false, shiftCount: 7, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.55 },
+        { model: "EQS 450+", year: 2023, acceleration: 6.4, maxSpeed: 200, engine: "后置单电机电动", power: "333马力", brakePerformance: 38, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.88 }
+    ],
+    "Audi": [
+        { model: "A4L 40 TFSI", year: 2023, acceleration: 8.8, maxSpeed: 235, engine: "2.0L 涡轮增压直四", power: "190马力", brakePerformance: 37, isEV: false, shiftCount: 7, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "Q3 35 TFSI", year: 2023, acceleration: 9.3, maxSpeed: 215, engine: "1.5L 涡轮增压直四（EA211 evo）", power: "160马力", brakePerformance: 38, isEV: false, shiftCount: 7, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.55 },
+        { model: "Q5L 40 TFSI", year: 2023, acceleration: 9.0, maxSpeed: 211, engine: "2.0L 涡轮增压直四", power: "190马力", brakePerformance: 37, isEV: false, shiftCount: 7, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.55 },
+        { model: "Q4 e-tron 40", year: 2023, acceleration: 8.8, maxSpeed: 160, engine: "单电机电动", power: "204马力", brakePerformance: 36, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "S5 3.0T", year: 2023, acceleration: 4.9, maxSpeed: 250, engine: "3.0L 涡轮增压V6", power: "354马力", brakePerformance: 32, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.7 }
+    ],
+    "Porsche": [
+        { model: "Macan", year: 2023, acceleration: 6.7, maxSpeed: 232, engine: "2.0L 涡轮增压直四", power: "265马力", brakePerformance: 36, isEV: false, shiftCount: 7, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "Cayenne", year: 2023, acceleration: 6.2, maxSpeed: 245, engine: "3.0L 涡轮增压V6", power: "340马力", brakePerformance: 35, isEV: false, shiftCount: 8, shiftIntensity: 0.09, torqueCurve: "peaky", tractionBuildup: 0.55 },
+        { model: "911 Carrera", year: 2023, acceleration: 4.2, maxSpeed: 293, engine: "3.0L 水平对置双涡轮", power: "385马力", brakePerformance: 31, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.7 },
+        { model: "Taycan 4S", year: 2023, acceleration: 4.0, maxSpeed: 250, engine: "双电机电动（四驱）", power: "530马力", brakePerformance: 36, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.92 },
+        { model: "Panamera 4", year: 2023, acceleration: 5.4, maxSpeed: 267, engine: "2.9T V6双涡轮增压", power: "330马力", brakePerformance: 35, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.65 }
+    ],
+    "Tesla": [
+        { model: "Model 3", year: 2024, acceleration: 6.1, maxSpeed: 225, engine: "单电机电动", power: "299马力（220kW）", brakePerformance: 36, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "Model 3 Performance", year: 2024, acceleration: 3.1, maxSpeed: 261, engine: "双电机电动", power: "480马力", brakePerformance: 33, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.95 },
+        { model: "Model Y", year: 2024, acceleration: 5.9, maxSpeed: 217, engine: "单电机电动", power: "299马力（220kW）", brakePerformance: 37, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "Model Y Long Range", year: 2024, acceleration: 5.0, maxSpeed: 217, engine: "双电机电动", power: "450马力", brakePerformance: 34, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.90 },
+        { model: "Model S", year: 2024, acceleration: 3.2, maxSpeed: 250, engine: "双电机电动（四驱）", power: "670马力", brakePerformance: 40, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.92 },
+        { model: "Model X", year: 2024, acceleration: 3.9, maxSpeed: 250, engine: "双电机电动（四驱）", power: "670马力", brakePerformance: 38, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.90 }
+    ],
+    "BYD": [
+        { model: "秦PLUS DM-i", year: 2024, acceleration: 7.3, maxSpeed: 185, engine: "1.5L 直四+电机", power: "197马力", brakePerformance: 38, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.65 },
+        { model: "汉EV", year: 2024, acceleration: 3.9, maxSpeed: 185, engine: "双电机电动", power: "517马力", brakePerformance: 33, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.90 },
+        { model: "宋PLUS DM-i", year: 2024, acceleration: 8.3, maxSpeed: 170, engine: "1.5L 直四+电机", power: "197马力", brakePerformance: 38, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.65 },
+        { model: "海豚", year: 2024, acceleration: 7.5, maxSpeed: 160, engine: "单电机电动", power: "177马力", brakePerformance: 38, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "海豹", year: 2023, acceleration: 3.8, maxSpeed: 180, engine: "双电机电动（四驱）", power: "530马力", brakePerformance: 36, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.90 },
+        { model: "元PLUS", year: 2023, acceleration: 7.3, maxSpeed: 160, engine: "单电机电动", power: "204马力", brakePerformance: 35, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "唐DM-p", year: 2022, acceleration: 4.3, maxSpeed: 180, engine: "1.5T 涡轮增压+双电机（插混）", power: "615马力", brakePerformance: 36, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "海鸥", year: 2023, acceleration: 15.0, maxSpeed: 130, engine: "单电机电动", power: "75马力", brakePerformance: 40, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.75 }
+    ],
+    "NIO": [
+        { model: "ET5", year: 2024, acceleration: 4.0, maxSpeed: 200, engine: "双电机电动", power: "490马力", brakePerformance: 33, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.90 },
+        { model: "ET7", year: 2024, acceleration: 3.8, maxSpeed: 200, engine: "双电机电动", power: "653马力", brakePerformance: 32, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.90 },
+        { model: "ES6", year: 2024, acceleration: 4.5, maxSpeed: 200, engine: "双电机电动", power: "490马力", brakePerformance: 34, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.90 },
+        { model: "EC6", year: 2024, acceleration: 4.4, maxSpeed: 200, engine: "双电机电动（四驱）", power: "489马力", brakePerformance: 34, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.90 },
+        { model: "ES8", year: 2023, acceleration: 4.1, maxSpeed: 200, engine: "双电机电动（四驱）", power: "653马力", brakePerformance: 34, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.90 }
+    ],
+    "XPeng": [
+        { model: "P7", year: 2024, acceleration: 4.3, maxSpeed: 200, engine: "双电机电动", power: "430马力", brakePerformance: 34, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.88 },
+        { model: "G6", year: 2024, acceleration: 3.9, maxSpeed: 202, engine: "双电机电动", power: "487马力", brakePerformance: 34, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.88 },
+        { model: "MONA M03", year: 2024, acceleration: 7.4, maxSpeed: 155, engine: "单电机电动", power: "218马力", brakePerformance: 37, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "G9", year: 2024, acceleration: 3.9, maxSpeed: 200, engine: "双电机电动（四驱）", power: "551马力", brakePerformance: 38, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.90 },
+        { model: "P5", year: 2024, acceleration: 7.5, maxSpeed: 170, engine: "单电机电动", power: "211马力", brakePerformance: 36, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 }
+    ],
+    "Li Auto": [
+        { model: "L7", year: 2024, acceleration: 5.3, maxSpeed: 180, engine: "1.5T 直四+电机（增程式）", power: "449马力", brakePerformance: 35, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "L8", year: 2024, acceleration: 5.3, maxSpeed: 180, engine: "1.5T 直四+电机（增程式）", power: "449马力", brakePerformance: 35, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "L9", year: 2024, acceleration: 5.3, maxSpeed: 180, engine: "1.5T 直四+电机（增程式）", power: "449马力", brakePerformance: 35, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 }
+    ],
+    "Toyota": [
+        { model: "凯美瑞 2.5S（双擎）", year: 2024, acceleration: 8.8, maxSpeed: 180, engine: "2.5L 直四+电机（e-CVT）", power: "207马力", brakePerformance: 38, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.6 },
+        { model: "卡罗拉 1.8L（双擎）", year: 2024, acceleration: 11.5, maxSpeed: 160, engine: "1.8L 直四+电机（e-CVT）", power: "140马力", brakePerformance: 40, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.6 },
+        { model: "RAV4 荣放 2.0L", year: 2024, acceleration: 10.6, maxSpeed: 180, engine: "2.0L 自然吸气直四", power: "171马力", brakePerformance: 39, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.55 },
+        { model: "汉兰达 2.5L（双擎）", year: 2024, acceleration: 8.5, maxSpeed: 180, engine: "2.5L 直四+电机（e-CVT）", power: "246马力", brakePerformance: 37, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.55 },
+        { model: "亚洲龙 2.0L", year: 2024, acceleration: 10.1, maxSpeed: 205, engine: "2.0L 自然吸气直四", power: "173马力", brakePerformance: 38, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.55 }
+    ],
+    "Honda": [
+        { model: "思域 240TURBO", year: 2024, acceleration: 8.5, maxSpeed: 200, engine: "1.5L 涡轮增压直四", power: "182马力", brakePerformance: 37, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "雅阁 260TURBO", year: 2024, acceleration: 8.6, maxSpeed: 186, engine: "1.5L 涡轮增压直四", power: "194马力", brakePerformance: 37, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "CR-V 1.5T", year: 2024, acceleration: 9.3, maxSpeed: 188, engine: "1.5L 涡轮增压直四", power: "193马力", brakePerformance: 38, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "peaky", tractionBuildup: 0.55 },
+        { model: "飞度 1.5L", year: 2024, acceleration: 8.7, maxSpeed: 188, engine: "1.5L 自然吸气直四", power: "124马力", brakePerformance: 40, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.50 },
+        { model: "雅阁 e:PHEV 2.0L", year: 2023, acceleration: 7.3, maxSpeed: 174, engine: "2.0L 直四+电机（插电混动）", power: "184马力", brakePerformance: 38, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.60 }
+    ],
+    "Volkswagen": [
+        { model: "朗逸 1.5L", year: 2024, acceleration: 12.5, maxSpeed: 190, engine: "1.5L 自然吸气直四", power: "110马力", brakePerformance: 40, isEV: false, shiftCount: 6, shiftIntensity: 0.10, torqueCurve: "linear", tractionBuildup: 0.55 },
+        { model: "帕萨特 330TSI", year: 2024, acceleration: 8.4, maxSpeed: 210, engine: "2.0L 涡轮增压直四", power: "186马力", brakePerformance: 37, isEV: false, shiftCount: 7, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "Golf GTI", year: 2023, acceleration: 7.2, maxSpeed: 230, engine: "2.0L 涡轮增压直四（EA888 evo4）", power: "220马力", brakePerformance: 35, isEV: false, shiftCount: 7, shiftIntensity: 0.12, torqueCurve: "peaky", tractionBuildup: 0.65 },
+        { model: "ID.4 X（单电机版）", year: 2023, acceleration: 8.5, maxSpeed: 160, engine: "单电机电动", power: "204马力", brakePerformance: 36, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "途观L 330TSI", year: 2024, acceleration: 8.8, maxSpeed: 200, engine: "2.0T 涡轮增压直四", power: "186马力", brakePerformance: 37, isEV: false, shiftCount: 7, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.58 },
+        { model: "ID.3", year: 2024, acceleration: 8.0, maxSpeed: 160, engine: "纯电动 后置单电机", power: "170马力", brakePerformance: 36, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 }
+    ],
+    "Hyundai": [
+        { model: "伊兰特 N Line", year: 2024, acceleration: 7.8, maxSpeed: 210, engine: "1.4L 涡轮增压直四", power: "140马力", brakePerformance: 38, isEV: false, shiftCount: 7, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "途胜L 1.5T", year: 2024, acceleration: 9.5, maxSpeed: 205, engine: "1.5L 涡轮增压直四", power: "200马力", brakePerformance: 38, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.55 },
+        { model: "IONIQ 5", year: 2024, acceleration: 7.4, maxSpeed: 185, engine: "单电机电动", power: "218马力", brakePerformance: 34, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "索纳塔 1.5T", year: 2024, acceleration: 8.6, maxSpeed: 210, engine: "1.5T 涡轮增压直四", power: "170马力", brakePerformance: 41, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.58 },
+        { model: "胜达 2.0T", year: 2024, acceleration: 8.8, maxSpeed: 210, engine: "2.0T 涡轮增压直四", power: "247马力", brakePerformance: 40, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.6 }
+    ],
+    "Kia": [
+        { model: "K5 1.5T", year: 2024, acceleration: 9.2, maxSpeed: 210, engine: "1.5L 涡轮增压直四", power: "170马力", brakePerformance: 38, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "EV6 Long Range", year: 2024, acceleration: 7.3, maxSpeed: 185, engine: "单电机电动", power: "228马力", brakePerformance: 34, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "狮铂拓界 1.6T", year: 2024, acceleration: 9.0, maxSpeed: 200, engine: "1.6L 涡轮增压直四", power: "200马力", brakePerformance: 38, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.55 },
+        { model: "嘉华 2.0T", year: 2024, acceleration: 9.2, maxSpeed: 205, engine: "2.0T 涡轮增压直四", power: "233马力", brakePerformance: 40, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.58 }
+    ],
+    "Lexus": [
+        { model: "ES 200", year: 2024, acceleration: 9.5, maxSpeed: 205, engine: "2.0L 自然吸气直四", power: "173马力", brakePerformance: 38, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.55 },
+        { model: "ES 300h", year: 2024, acceleration: 8.9, maxSpeed: 180, engine: "2.5L 直四+电机（e-CVT）", power: "218马力", brakePerformance: 36, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.55 },
+        { model: "RX 350h", year: 2024, acceleration: 7.5, maxSpeed: 200, engine: "2.5L 直四+电机（e-CVT）", power: "246马力", brakePerformance: 36, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.55 },
+        { model: "NX 350h", year: 2024, acceleration: 7.7, maxSpeed: 200, engine: "2.5L 直四+电机（e-CVT混动）", power: "242马力", brakePerformance: 41, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.6 },
+        { model: "LX 600", year: 2024, acceleration: 6.9, maxSpeed: 220, engine: "3.5T V6 双涡轮增压", power: "415马力", brakePerformance: 42, isEV: false, shiftCount: 10, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.65 }
+    ],
+    "Volvo": [
+        { model: "S60 B5", year: 2024, acceleration: 6.8, maxSpeed: 180, engine: "2.0L 涡轮增压直四+48V轻混", power: "250马力", brakePerformance: 36, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "XC60 B5", year: 2024, acceleration: 7.1, maxSpeed: 180, engine: "2.0L 涡轮增压直四+48V轻混", power: "250马力", brakePerformance: 36, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.55 },
+        { model: "EX30", year: 2024, acceleration: 5.3, maxSpeed: 180, engine: "单电机电动", power: "272马力", brakePerformance: 35, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "S90 B5", year: 2024, acceleration: 7.2, maxSpeed: 180, engine: "2.0T 涡轮增压+48V轻混", power: "250马力", brakePerformance: 40, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "linear", tractionBuildup: 0.6 },
+        { model: "XC90 B6", year: 2024, acceleration: 6.9, maxSpeed: 180, engine: "2.0T 涡轮+机械增压+48V轻混", power: "299马力", brakePerformance: 38, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.65 }
+    ],
+    "MINI": [
+        { model: "Cooper 1.5T", year: 2024, acceleration: 7.7, maxSpeed: 213, engine: "1.5L 涡轮增压直三", power: "156马力", brakePerformance: 37, isEV: false, shiftCount: 7, shiftIntensity: 0.12, torqueCurve: "peaky", tractionBuildup: 0.65 },
+        { model: "Cooper S 2.0T", year: 2024, acceleration: 6.6, maxSpeed: 234, engine: "2.0L 涡轮增压直四", power: "204马力", brakePerformance: 35, isEV: false, shiftCount: 7, shiftIntensity: 0.12, torqueCurve: "peaky", tractionBuildup: 0.65 },
+        { model: "JCW 2.0T", year: 2024, acceleration: 6.1, maxSpeed: 250, engine: "2.0L 涡轮增压直四", power: "231马力", brakePerformance: 33, isEV: false, shiftCount: 7, shiftIntensity: 0.12, torqueCurve: "peaky", tractionBuildup: 0.65 },
+        { model: "Cooper S Countryman", year: 2024, acceleration: 7.1, maxSpeed: 212, engine: "2.0L 涡轮增压直四", power: "204马力", brakePerformance: 36, isEV: false, shiftCount: 7, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "JCW Countryman", year: 2024, acceleration: 5.4, maxSpeed: 250, engine: "2.0L 涡轮增压直四", power: "300马力", brakePerformance: 33, isEV: false, shiftCount: 7, shiftIntensity: 0.12, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "Cooper SE", year: 2024, acceleration: 6.7, maxSpeed: 170, engine: "单电机电动", power: "218马力", brakePerformance: 36, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "Aceman E", year: 2025, acceleration: 7.9, maxSpeed: 160, engine: "单电机电动", power: "184马力", brakePerformance: 35, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.85 },
+        { model: "JCW Aceman", year: 2025, acceleration: 6.9, maxSpeed: 200, engine: "单电机电动", power: "258马力", brakePerformance: 34, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.88 }
+    ],
+    "Mazda": [
+        { model: "Mazda3 昂克赛拉 2.0L", year: 2024, acceleration: 9.8, maxSpeed: 210, engine: "2.0L 自然吸气直四", power: "158马力", brakePerformance: 38, isEV: false, shiftCount: 6, shiftIntensity: 0.10, torqueCurve: "linear", tractionBuildup: 0.55 },
+        { model: "CX-5 2.5L", year: 2024, acceleration: 9.5, maxSpeed: 200, engine: "2.5L 自然吸气直四", power: "196马力", brakePerformance: 38, isEV: false, shiftCount: 6, shiftIntensity: 0.10, torqueCurve: "linear", tractionBuildup: 0.55 },
+        { model: "CX-50 2.5L", year: 2023, acceleration: 9.5, maxSpeed: 190, engine: "2.5L 自然吸气直四", power: "188马力", brakePerformance: 38, isEV: false, shiftCount: 6, shiftIntensity: 0.10, torqueCurve: "linear", tractionBuildup: 0.55 }
+    ],
+    "Nissan": [
+        { model: "轩逸 1.6L", year: 2024, acceleration: 12.0, maxSpeed: 186, engine: "1.6L 自然吸气直四", power: "135马力", brakePerformance: 40, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.5 },
+        { model: "天籁 2.0T", year: 2024, acceleration: 6.9, maxSpeed: 225, engine: "2.0L 涡轮增压直四（VC-Turbo）", power: "243马力", brakePerformance: 36, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "peaky", tractionBuildup: 0.55 },
+        { model: "Ariya", year: 2023, acceleration: 5.0, maxSpeed: 200, engine: "双电机电动", power: "435马力", brakePerformance: 36, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.90 },
+        { model: "逍客 2.0L", year: 2024, acceleration: 11.7, maxSpeed: 186, engine: "2.0L 自然吸气直四", power: "151马力", brakePerformance: 40, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.55 },
+        { model: "奇骏 1.5T", year: 2024, acceleration: 10.3, maxSpeed: 200, engine: "1.5T 三缸可变压缩比", power: "204马力", brakePerformance: 40, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.58 }
+    ],
+    "Ford": [
+        { model: "蒙迪欧 2.0T", year: 2024, acceleration: 6.5, maxSpeed: 220, engine: "2.0L 涡轮增压直四（EcoBoost）", power: "254马力", brakePerformance: 36, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "锐界L 2.0T", year: 2024, acceleration: 8.1, maxSpeed: 193, engine: "2.0L 涡轮增压直四（EcoBoost）", power: "252马力", brakePerformance: 37, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.55 },
+        { model: "探险者 2.3T", year: 2024, acceleration: 7.6, maxSpeed: 200, engine: "2.3T 涡轮增压直四", power: "276马力", brakePerformance: 41, isEV: false, shiftCount: 10, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.65 },
+        { model: "福克斯 1.5T", year: 2024, acceleration: 8.9, maxSpeed: 215, engine: "1.5T 三缸涡轮增压", power: "174马力", brakePerformance: 37, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "linear", tractionBuildup: 0.6 }
+    ],
+    "Chevrolet": [
+        { model: "迈锐宝XL 2.0T", year: 2024, acceleration: 7.0, maxSpeed: 230, engine: "2.0L 涡轮增压直四（LSY）", power: "237马力", brakePerformance: 36, isEV: false, shiftCount: 9, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.6 },
+        { model: "探界者 2.0T", year: 2024, acceleration: 8.1, maxSpeed: 210, engine: "2.0L 涡轮增压直四（LSY）", power: "237马力", brakePerformance: 37, isEV: false, shiftCount: 9, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.55 }
+    ],
+    "Subaru": [
+        { model: "森林人 2.0i", year: 2024, acceleration: 10.8, maxSpeed: 195, engine: "2.0L 水平对置直四", power: "156马力", brakePerformance: 39, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.55 },
+        { model: "傲虎 2.5i", year: 2024, acceleration: 10.1, maxSpeed: 198, engine: "2.5L 水平对置直四", power: "169马力", brakePerformance: 38, isEV: false, shiftCount: 1, shiftIntensity: 0.05, torqueCurve: "linear", tractionBuildup: 0.55 },
+    ],
+    "Zeekr": [
+        { model: "001", year: 2024, acceleration: 3.3, maxSpeed: 240, engine: "双电机电动（四驱）", power: "789马力", brakePerformance: 38, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.92 },
+        { model: "X", year: 2024, acceleration: 5.8, maxSpeed: 185, engine: "单电机电动（后驱）", power: "272马力", brakePerformance: 35, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.88 }
+    ],
+    "Smart": [
+        { model: "精灵#1", year: 2024, acceleration: 6.7, maxSpeed: 180, engine: "单电机电动（后驱）", power: "272马力", brakePerformance: 38, isEV: true, shiftCount: 0, shiftIntensity: 0, torqueCurve: "flat", tractionBuildup: 0.88 }
+    ],
+    "Geely": [
+        { model: "星越L 2.0T", year: 2024, acceleration: 7.7, maxSpeed: 215, engine: "2.0T 涡轮增压直四", power: "238马力", brakePerformance: 38, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.62 },
+        { model: "博越L 1.5T", year: 2024, acceleration: 7.4, maxSpeed: 195, engine: "1.5T 涡轮增压直四", power: "181马力", brakePerformance: 36, isEV: false, shiftCount: 7, shiftIntensity: 0.10, torqueCurve: "linear", tractionBuildup: 0.58 }
+    ],
+    "Changan": [
+        { model: "CS75 PLUS 2.0T", year: 2024, acceleration: 7.5, maxSpeed: 200, engine: "2.0T 蓝鲸涡轮增压直四", power: "233马力", brakePerformance: 39, isEV: false, shiftCount: 8, shiftIntensity: 0.10, torqueCurve: "peaky", tractionBuildup: 0.62 },
+        { model: "UNI-V 1.5T", year: 2024, acceleration: 7.1, maxSpeed: 205, engine: "1.5T 蓝鲸NE涡轮增压直四", power: "188马力", brakePerformance: 37, isEV: false, shiftCount: 7, shiftIntensity: 0.10, torqueCurve: "linear", tractionBuildup: 0.62 }
+    ]
+    };
+
+    // ============================================================
+    // 模拟引擎 - 物理计算
+    // ============================================================
+    const SimulationEngine = {
+        speed: 0,           // km/h
+        rpm: 0,
+        targetRpm: 0,       // 目标RPM（用于平滑过渡）
+        gear: 'N',
+        currentGearIndex: 0, // 当前档位索引
+        gearBoundaries: null, // 升档边界速度数组（基于车型动态计算）
+        isShifting: false,   // 是否正在换挡（RPM突变过渡中）
+        shiftTimer: 0,       // 换挡过渡计时器（秒）
+        shiftDirection: 0,   // 换挡方向：+1升挡，-1降挡，0无
+        shiftStartRpm: 0,    // 换挡开始时的RPM
+        shiftTargetRpm: 0,   // 换挡结束时的目标RPM
+        shiftDuration: 0.3,  // 当前换挡总时长
+        lastSpeed: 0,        // 上一帧速度（用于判断加减速趋势）
+        isAccelerating: false,
+        isBraking: false,
+        selectedCar: null,
+        lastTimestamp: 0,
+        animationFrame: null,
+        // 速度表量程（动态调整）
+        speedometerMax: 240,
+        // 加速度校准缩放系数（确保0-100时间匹配车型数据）
+        accelScale: 1,
+        airDragCoeff: 0.0005,
+
+        // 判断当前车型是否显示转速表（电动车不显示）
+        hasTachometer() {
+            return this.selectedCar && !this.selectedCar.isEV;
+        },
+
+        // 计算档位边界速度（基于真实齿比序列）
+        // 每个档位在红线RPM下能达到的最高速度 = maxSpeed * (最高档齿比 / 该档齿比)
+        // 换挡点 = 该档位最高速度 * SHIFT_RPM_RATIO（全油门95%红线时换挡）
+        // 1→2档换挡点额外提升（1档齿比大、易打滑，需更高转速）
+        // 返回 shiftCount-1 个边界点，将速度区间划分为 shiftCount 个档位
+        getGearBoundaries() {
+            const car = this.selectedCar;
+            if (!car || car.isEV) return null;
+            const shiftCount = car.shiftCount || 0;
+            if (shiftCount <= 1) return null; // CVT/混动：无离散档位
+
+            // 获取齿比序列
+            const ratios = CONSTANTS.GEAR_RATIOS[shiftCount];
+            if (!ratios || ratios.length < shiftCount) return null;
+
+            const topGearRatio = ratios[shiftCount - 1]; // 最高档齿比（最小）
+            const shiftRpmRatio = CONSTANTS.SHIFT_RPM_RATIO;
+
+            const boundaries = [];
+            for (let i = 0; i < shiftCount - 1; i++) {
+                // 档位i在红线RPM下能达到的最高速度
+                const gearMaxSpeed = car.maxSpeed * (topGearRatio / ratios[i]);
+                // 换挡点 = 该档位最高速度 * 换挡RPM比例
+                let shiftPoint = gearMaxSpeed * shiftRpmRatio;
+                // 1→2档（i=0）换挡点额外提升，模拟全油门1档拉高转速
+                if (i === 0) {
+                    shiftPoint = gearMaxSpeed * Math.min(0.98, shiftRpmRatio + CONSTANTS.SHIFT_1TO2_BONUS);
+                }
+                boundaries.push(shiftPoint);
+            }
+            return boundaries;
+        },
+
+        // 计算当前 RPM（基于档位和速度，稳态值，不含换挡过渡）
+        // 传统AT/MT：基于真实齿比计算 RPM ∝ speed × gear_ratio
+        //   在换挡点处 RPM = SHIFT_RPM_RATIO × REDLINE（≈6650），
+        //   升档后 RPM 按齿比比例下降（真实物理），降档反之，避免固定 GEAR_MIN→REDLINE 大跳变
+        // CVT/混动（shiftCount=1）：RPM 平滑变化，模拟 e-CVT 保持高效区间
+        // 电动车：返回 0（不显示转速）
+        calculateRPM(speed, gearIndex) {
+            const car = this.selectedCar;
+            if (!car) return CONSTANTS.IDLE_RPM;
+            if (car.isEV) return 0;
+            if (speed <= 0) return CONSTANTS.IDLE_RPM;
+
+            const shiftCount = car.shiftCount || 0;
+
+            // CVT/混动（单档）：RPM 平滑曲线
+            if (shiftCount <= 1) {
+                const speedRatio = speed / car.maxSpeed;
+                // 起步阶段 RPM 快速上升至 4500，之后缓慢上升
+                if (speedRatio < 0.25) {
+                    const t = speedRatio / 0.25;
+                    return CONSTANTS.IDLE_RPM + t * (4500 - CONSTANTS.IDLE_RPM);
+                } else {
+                    const t = (speedRatio - 0.25) / 0.75;
+                    return 4500 + t * 1500; // 4500 → 6000
+                }
+            }
+
+            // 传统 AT/MT：基于真实齿比计算 RPM
+            // RPM = (speed × ratios[gearIndex]) / (maxSpeed × topGearRatio) × REDLINE_RPM
+            // 在换挡点 boundaries[i] 处验算：= SHIFT_RPM_RATIO × REDLINE = 6650 ✓
+            // 升档后 RPM = 6650 × (新齿比/旧齿比)，按齿比差比例变化，符合真实物理
+            const ratios = CONSTANTS.GEAR_RATIOS[shiftCount];
+            if (!ratios || gearIndex >= ratios.length) return CONSTANTS.IDLE_RPM;
+
+            const topGearRatio = ratios[ratios.length - 1];
+            const rpm = (speed * ratios[gearIndex]) / (car.maxSpeed * topGearRatio) * CONSTANTS.REDLINE_RPM;
+            return Math.max(CONSTANTS.IDLE_RPM, Math.min(CONSTANTS.REDLINE_RPM, rpm));
+        },
+
+        // 根据速度、当前档位、操作类型确定目标档位（带滞回）
+        // 加速时用升档边界，减速时用降档边界（更低），刹车时更积极降档
+        // 降档点基于速度滞回计算：降档点 = 升档边界 - 滞回量 - 刹车偏移
+        determineGear(speed, currentGear, isDecelerating, isBraking) {
+            const car = this.selectedCar;
+            if (!car) return 0;
+            if (car.isEV) return 0;       // 电动车：无档位
+            if (speed <= 0) return 0;     // 静止：1档
+
+            const shiftCount = car.shiftCount || 0;
+            if (shiftCount <= 1) return 0; // CVT/混动：单档
+
+            const boundaries = this.gearBoundaries;
+            if (!boundaries) return 0;
+
+            // 滞回量：降档点比升档点低
+            const hysteresis = car.maxSpeed * CONSTANTS.SHIFT_HYSTERESIS_RATIO;
+            // 刹车时额外降档偏移（更积极降档以利用发动机制动）
+            const brakeBonus = isBraking ? car.maxSpeed * CONSTANTS.BRAKE_DOWNSHIFT_BONUS : 0;
+
+            let newGear = currentGear;
+
+            // 升档：从当前档位向上检查
+            if (!isDecelerating) {
+                for (let i = currentGear; i < shiftCount - 1; i++) {
+                    if (speed >= boundaries[i]) {
+                        newGear = i + 1;
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            // 降档：顺序降一档（与真实变速箱一致，不跳档）
+            // 降档点 = 升档边界[currentGear-1] - 滞回 - 刹车偏移
+            // 刹车时更积极降档（偏移更大），模拟跟趾降档利用发动机制动
+            if (isDecelerating && currentGear > 0) {
+                const downshiftPoint = boundaries[currentGear - 1] - hysteresis - brakeBonus;
+                if (speed < downshiftPoint) {
+                    newGear = currentGear - 1;
+                }
+            }
+
+            return newGear;
+        },
+
+        // 更新RPM和档位（核心逻辑：换挡状态机 + 发动机制动）
+        // 加速：RPM随速度上升 → 升挡 → RPM骤降
+        // 刹车：RPM因发动机制动下降 → 降档 → RPM跳升（低档高转速）→ 继续下降
+        // 滑行：类似刹车但更温和
+        updateRPMAndGear(speed, deltaTime) {
+            const car = this.selectedCar;
+            if (!car) return;
+            if (car.isEV) { this.rpm = 0; this.currentGearIndex = 0; return; }
+
+            // 判断加减速趋势
+            const speedDelta = speed - this.lastSpeed;
+            this.lastSpeed = speed;
+            const isDecelerating = speedDelta < -0.05 || this.isBraking;
+            const isAccelerating = speedDelta > 0.05 || this.isAccelerating;
+
+            // === 速度为0时：强制结束换挡状态、重置档位，RPM直接回落到怠速 ===
+            // 避免降挡过渡在speed=0时让RPM跳升，
+            // 同时确保currentGearIndex重置为0，防止加速时档位错误导致RPM跳变
+            if (speed <= 0) {
+                this.currentGearIndex = 0;
+                this.isShifting = false;
+                this.shiftDirection = 0;
+
+                const targetRpm = CONSTANTS.IDLE_RPM;
+                // 刹车中用发动机制动速率（较快），否则用怠速回落速率
+                const rpmChangeRate = this.isBraking
+                    ? CONSTANTS.ENGINE_BRAKE_BASE + (car.shiftCount || 1) * CONSTANTS.ENGINE_BRAKE_GEAR_FACTOR
+                    : CONSTANTS.IDLE_RETURN_RATE;
+
+                this.targetRpm = targetRpm;
+                const rpmDiff = targetRpm - this.rpm;
+                if (Math.abs(rpmDiff) < 10) {
+                    this.rpm = targetRpm;
+                } else {
+                    const maxChange = rpmChangeRate * deltaTime;
+                    if (rpmDiff > 0) {
+                        this.rpm = Math.min(this.rpm + maxChange, targetRpm);
+                    } else {
+                        this.rpm = Math.max(this.rpm - maxChange, targetRpm);
+                    }
+                }
+                this.rpm = Math.max(CONSTANTS.IDLE_RPM, this.rpm);
+                return;
+            }
+
+            // === 换挡状态机 ===
+            if (this.isShifting) {
+                // 换挡过渡中：推进计时器，插值RPM
+                this.shiftTimer -= deltaTime;
+                const progress = 1 - Math.max(0, this.shiftTimer / this.shiftDuration);
+
+                // 每帧更新换挡目标RPM，跟随当前速度变化
+                // 避免换挡期间速度变化导致 shiftTargetRpm 过期，换挡结束时产生跳变
+                this.shiftTargetRpm = this.calculateRPM(speed, this.currentGearIndex);
+
+                if (this.shiftDirection > 0) {
+                    // 升挡过渡：RPM从高位平滑下降到新档位目标值
+                    // 使用 ease-out 曲线（先快降后缓降）
+                    const eased = 1 - Math.pow(1 - progress, 2);
+                    this.rpm = this.shiftStartRpm + (this.shiftTargetRpm - this.shiftStartRpm) * eased;
+                } else {
+                    // 降挡过渡：RPM先降（离合分离），再平滑上升到新档位目标值
+                    // 前半段下降，后半段上升（转速同步）
+                    if (progress < 0.4) {
+                        // 前段：RPM下降（离合分离，发动机失去负载）
+                        const p = progress / 0.4;
+                        const dipRpm = this.shiftStartRpm - (this.shiftStartRpm - this.shiftTargetRpm * 0.6) * 0.3;
+                        this.rpm = this.shiftStartRpm + (dipRpm - this.shiftStartRpm) * p;
+                    } else {
+                        // 后段：RPM平滑上升到新档位目标值（转速同步）
+                        const p = (progress - 0.4) / 0.6;
+                        const dipRpm = this.shiftStartRpm - (this.shiftStartRpm - this.shiftTargetRpm * 0.6) * 0.3;
+                        const eased = 1 - Math.pow(1 - p, 2);
+                        this.rpm = dipRpm + (this.shiftTargetRpm - dipRpm) * eased;
+                    }
+                }
+
+                if (this.shiftTimer <= 0) {
+                    this.isShifting = false;
+                    this.shiftDirection = 0;
+                    // shiftTargetRpm 已每帧追踪当前速度，RPM 已接近稳态值，无需硬重算
+                }
+                // 换挡中不改变档位，RPM由过渡控制
+                this.targetRpm = this.rpm;
+                return;
+            }
+
+            // === 非换挡状态：确定目标档位 ===
+            const newGear = this.determineGear(speed, this.currentGearIndex, isDecelerating, this.isBraking);
+
+            // 检测换挡触发
+            if (newGear !== this.currentGearIndex && speed > 0) {
+                this.isShifting = true;
+                this.shiftDirection = newGear > this.currentGearIndex ? 1 : -1;
+                this.shiftDuration = this.shiftDirection > 0
+                    ? CONSTANTS.SHIFT_UP_DURATION
+                    : CONSTANTS.SHIFT_DOWN_DURATION;
+                this.shiftTimer = this.shiftDuration;
+                this.shiftStartRpm = this.rpm;
+                // 换挡结束时的目标RPM = 新档位在当前速度下的稳态RPM
+                this.shiftTargetRpm = this.calculateRPM(speed, newGear);
+                this.currentGearIndex = newGear;
+                return;
+            }
+
+            // === 稳态：RPM跟随速度变化（speed>0 分支，speed<=0 已提前 return） ===
+            // 目标RPM计算：低速区间平滑过渡到怠速，避免速度归零时目标跳变
+            let targetRpm = this.calculateRPM(speed, this.currentGearIndex);
+            // 低速混合：速度低于阈值时，目标RPM从档位RPM平滑过渡到怠速
+            // 消除 calculateRPM 在 speed→0 时 RPM 归零的不连续
+            if (speed < CONSTANTS.LOW_SPEED_RPM_BLEND) {
+                const t = this.smoothstep(speed / CONSTANTS.LOW_SPEED_RPM_BLEND);
+                targetRpm = CONSTANTS.IDLE_RPM + (targetRpm - CONSTANTS.IDLE_RPM) * t;
+            }
+
+            // RPM变化速率根据状态调整
+            let rpmChangeRate;
+            if (isAccelerating && !this.isBraking) {
+                rpmChangeRate = CONSTANTS.ACCEL_RPM_RATE;  // 加速时RPM快速上升
+            } else if (this.isBraking) {
+                // 刹车时发动机制动：低档位制动更强
+                // 档位越低（currentGearIndex越小），制动越强
+                const gearBrakeBonus = (car.shiftCount - this.currentGearIndex) * CONSTANTS.ENGINE_BRAKE_GEAR_FACTOR;
+                rpmChangeRate = CONSTANTS.ENGINE_BRAKE_BASE + gearBrakeBonus;
+            } else if (isDecelerating) {
+                // 滑行减速时：发动机制动使RPM下降，档位越低越强
+                const gearBrakeBonus = (car.shiftCount - this.currentGearIndex) * (CONSTANTS.ENGINE_BRAKE_GEAR_FACTOR * 0.5);
+                rpmChangeRate = CONSTANTS.ENGINE_BRAKE_BASE * 0.6 + gearBrakeBonus;
+            } else {
+                rpmChangeRate = CONSTANTS.STEADY_RPM_RATE;  // 稳态时RPM缓慢变化
+            }
+
+            this.targetRpm = Math.max(CONSTANTS.IDLE_RPM, targetRpm);
+
+            const rpmDiff = this.targetRpm - this.rpm;
+            if (Math.abs(rpmDiff) < 10) {
+                this.rpm = this.targetRpm;
+            } else {
+                const maxChange = rpmChangeRate * deltaTime;
+                if (rpmDiff > 0) {
+                    this.rpm = Math.min(this.rpm + maxChange, this.targetRpm);
+                } else {
+                    this.rpm = Math.max(this.rpm - maxChange, this.targetRpm);
+                }
+            }
+
+            // 确保RPM不低于怠速
+            this.rpm = Math.max(CONSTANTS.IDLE_RPM, this.rpm);
+        },
+
+        // 获取档位显示文本
+        getGearDisplay() {
+            const car = this.selectedCar;
+            if (!car) return 'N';
+            if (car.isEV) return (this.isAccelerating || this.speed > 0) ? 'D' : 'N';
+            const shiftCount = car.shiftCount || 0;
+            if (shiftCount <= 1) {
+                // CVT/混动
+                return (this.isAccelerating || this.speed > 0) ? 'E' : 'N';
+            }
+            // 传统 AT/MT
+            if (this.speed <= 0 && !this.isAccelerating) return 'N';
+            if (this.speed <= 0) return '1';
+            return String(this.currentGearIndex + 1);
+        },
+
+        // smoothstep 辅助函数：平滑插值
+        smoothstep(x) {
+            const t = Math.max(0, Math.min(1, x));
+            return t * t * (3 - 2 * t);
+        },
+
+        // 计算扭矩因子（共享方法，供 calculateAcceleration 和 simulate0to100 使用）
+        // 返回 0-1 之间的值，表示当前速度下的扭矩输出比例
+        // isShifting 参数：换挡中跳过 gearShiftFactor 凹陷，避免与 torqueCutFactor 双重削减
+        calculateTorqueFactor(speed, isShifting) {
+            if (!this.selectedCar) return 0;
+            const car = this.selectedCar;
+            const maxSpeed = car.maxSpeed;
+            const speedMs = speed / 3.6;
+            const maxSpeedMs = maxSpeed / 3.6;
+            const speedRatio = speedMs / maxSpeedMs;
+
+            let torqueFactor;
+
+            if (car.isEV) {
+                // === 电动车加速模型 ===
+                // 1. 起步牵引力建立（0-10 km/h）：EV电机扭矩响应极快
+                // tractionBuildup 越高→起步牵引力越强（高性能双电机可达0.90+，经济型单电机0.75-0.85）
+                const tractionBuildup = car.tractionBuildup ?? 0.85;
+                const minTraction = Math.min(0.98, 0.80 + tractionBuildup * 0.18); // 0.94~0.98
+                let tractionRamp = 1;
+                if (speed < 10) {
+                    const s = this.smoothstep(speed / 10);
+                    tractionRamp = minTraction + (1 - minTraction) * s;
+                }
+
+                // 2. 扭矩曲线：flat 类型使用 1 - speedRatio^1.5（更慢的衰减）
+                const baseTorque = 1 - Math.pow(speedRatio, 1.5);
+
+                torqueFactor = baseTorque * tractionRamp;
+
+            } else {
+                // === 燃油车加速模型 ===
+                // 1. 离合器接合（0-30 km/h）：起步离合器传递比例
+                // tractionBuildup 越高→离合器接合越快、起步扭矩越大（性能车0.70+，家用车0.55-0.65）
+                const tractionBuildup = car.tractionBuildup ?? 0.6;
+                const minClutch = Math.min(0.85, 0.55 + tractionBuildup * 0.25); // 0.69~0.85
+                let clutchFactor;
+                if (speed < 30) {
+                    const s = this.smoothstep(speed / 30);
+                    clutchFactor = minClutch + (1 - minClutch) * s;
+                } else {
+                    clutchFactor = 1.0;
+                }
+
+                // 2. 换挡扭矩波动：使用齿比计算的换挡点（与 getGearBoundaries 对齐）
+                // 注意：换挡进行中（isShifting）时由 torqueCutFactor 统一处理扭矩中断，
+                // 此处跳过 gearShiftFactor 凹陷，避免与 torqueCutFactor 叠加导致扭矩双重削减
+                let gearShiftFactor = 1.0;
+                const shiftCount = car.shiftCount || 0;
+                if (!isShifting && shiftCount > 1 && this.gearBoundaries) {
+                    const shiftHalfWidth = CONSTANTS.SHIFT_HALF_WIDTH; // km/h，换挡凹陷半宽
+                    for (let i = 0; i < shiftCount - 1; i++) {
+                        const shiftSpeed = this.gearBoundaries[i];
+                        if (speed > shiftSpeed - shiftHalfWidth && speed < shiftSpeed + shiftHalfWidth) {
+                            const dist = Math.abs(speed - shiftSpeed) / shiftHalfWidth;
+                            const dip = car.shiftIntensity * (1 + Math.cos(dist * Math.PI)) / 2;
+                            gearShiftFactor = Math.min(gearShiftFactor, 1 - dip);
+                        }
+                    }
+                }
+
+                // 3. 发动机扭矩曲线：根据 torqueCurve 参数
+                let engineTorque;
+                if (car.torqueCurve === "peaky") {
+                    // 涡轮增压：起步 0.92，快速升到 1.0，宽平台到 0.55，然后 smoothstep 下降到 0
+                    if (speedRatio < 0.12) {
+                        const t = speedRatio / 0.12;
+                        engineTorque = 0.92 + 0.08 * this.smoothstep(t);
+                    } else if (speedRatio < 0.55) {
+                        engineTorque = 1.0;
+                    } else {
+                        const t = (speedRatio - 0.55) / 0.45;
+                        engineTorque = 1.0 - this.smoothstep(t);
+                    }
+                } else {
+                    // linear (自然吸气)：起步 0.92，宽平台到 0.35，然后 smoothstep 下降到 0
+                    if (speedRatio < 0.10) {
+                        const t = speedRatio / 0.10;
+                        engineTorque = 0.92 + 0.08 * this.smoothstep(t);
+                    } else if (speedRatio < 0.35) {
+                        engineTorque = 1.0;
+                    } else {
+                        const t = (speedRatio - 0.35) / 0.65;
+                        engineTorque = 1.0 - this.smoothstep(t);
+                    }
+                }
+
+                torqueFactor = clutchFactor * gearShiftFactor * engineTorque;
+            }
+
+            return torqueFactor;
+        },
+
+        // 计算净加速度的公共方法（统一在 m/s² 下计算，确保校准与实时模拟一致）
+        // 参数：speed km/h、scale accelScale、isShifting 是否换挡中
+        // 返回：净加速度 m/s²（驱动力 - 空气阻力 - 滚动阻力，允许负值）
+        computeNetAccelMs2(speed, scale, isShifting) {
+            const car = this.selectedCar;
+            // 100km/h / 加速时间 → km/h/s，再 /3.6 转为 m/s²
+            const baseAccelMs2 = (100 / car.acceleration) * scale / 3.6;
+            const speedMs = speed / 3.6;
+            const speedRatio = speedMs / (car.maxSpeed / 3.6);
+
+            // 扭矩因子（含起步离合/牵引建立、换挡点凹陷、发动机扭矩曲线）
+            // 传入 isShifting 以在换挡中跳过 gearShiftFactor 凹陷
+            const torqueFactor = this.calculateTorqueFactor(speed, isShifting);
+
+            // 换挡扭矩中断：换挡期间（离合器分离）驱动力大幅降低
+            const torqueCutFactor = isShifting ? CONSTANTS.SHIFT_TORQUE_CUT : 1.0;
+
+            // 软限速因子：速度接近maxSpeed时平滑衰减至0（smoothstep 在 0.85~1.0 区间反转）
+            let speedLimiter = 1.0;
+            if (speedRatio > 0.85) {
+                const t = Math.min(1, (speedRatio - 0.85) / 0.15);
+                speedLimiter = 1 - t * t * (3 - 2 * t);
+            }
+
+            // 阻力（m/s²）：空气阻力 ∝ v²，滚动阻力为常数
+            const airCoeff = this.airDragCoeff ?? CONSTANTS.AIR_RESISTANCE_COEFF;
+            const airDrag = airCoeff * speedMs * speedMs;
+            const rollingDrag = CONSTANTS.ROLLING_RESISTANCE;
+            const drivingForce = Math.max(0, baseAccelMs2 * torqueFactor * torqueCutFactor * speedLimiter);
+            return drivingForce - airDrag - rollingDrag;
+        },
+
+        // 计算加速度（km/h/s），考虑空气阻力、滚动阻力和换挡扭矩中断
+        // 所有计算统一在 m/s² 下进行，最后转换为 km/h/s，保证单位一致
+        calculateAcceleration(speed) {
+            if (!this.selectedCar) return 0;
+            return this.computeNetAccelMs2(speed, this.accelScale, this.isShifting) * 3.6;
+        },
+
+        // 模拟0-100加速（用于校准），返回达到100km/h所需时间
+        // 完整模拟换挡状态机：换挡期间应用扭矩中断，与实际驾驶逻辑一致
+        // 这样校准出的 accelScale 会补偿换挡中断带来的时间损失，确保破百时间匹配车型数据
+        // dt 与实际驾驶帧率一致（60fps ≈ 0.0167s），确保换挡触发时机与实际驾驶吻合
+        simulate0to100(scale) {
+            const dt = 0.0167; // 60fps 帧间隔，与 updateAcceleration 的 deltaTime 一致
+            let speed = 0;
+            let time = 0;
+            const car = this.selectedCar;
+            const boundaries = this.gearBoundaries;
+            const shiftCount = car.shiftCount || 0;
+            const hasDiscreteGears = !car.isEV && shiftCount > 1 && boundaries;
+
+            // 换挡状态机（与实际驾驶 updateRPMAndGear 逻辑一致）
+            let currentGear = 0;
+            let isShifting = false;
+            let shiftTimer = 0;
+
+            while (speed < 100 && time < 30) {
+                // 检查换挡触发（仅升档，加速场景）
+                if (isShifting) {
+                    shiftTimer -= dt;
+                    if (shiftTimer <= 0) isShifting = false;
+                } else if (hasDiscreteGears && speed > 0) {
+                    let newGear = currentGear;
+                    for (let i = currentGear; i < shiftCount - 1; i++) {
+                        if (speed >= boundaries[i]) {
+                            newGear = i + 1;
+                        } else {
+                            break;
+                        }
+                    }
+                    if (newGear !== currentGear) {
+                        isShifting = true;
+                        shiftTimer = CONSTANTS.SHIFT_UP_DURATION;
+                        currentGear = newGear;
+                    }
+                }
+
+                // 使用公共加速度计算（与 calculateAcceleration 完全一致）
+                const netAccelMs2 = this.computeNetAccelMs2(speed, scale, isShifting);
+                speed = Math.max(0, speed + netAccelMs2 * 3.6 * dt);
+                time += dt;
+            }
+            return time;
+        },
+
+        // 校准加速度缩放系数和空气阻力系数
+        // 确保0-100加速时间和最高车速都严格匹配车型数据
+        // accelScale 与 airDragCoeff 相互耦合（驱动力变→最高车速平衡点变；阻力变→0-100时间变），
+        // 因此采用迭代收敛：先无阻力校准 accelScale，再交替校准 airDragCoeff 与 accelScale 多轮
+        calibrateAcceleration() {
+            if (!this.selectedCar) return;
+            const targetTime = this.selectedCar.acceleration;
+            const targetMaxSpeed = this.selectedCar.maxSpeed;
+
+            // 第一步：在无空气阻力下粗校准 accelScale，确保0-100时间匹配
+            let low = 0.3, high = 8.0;
+            for (let i = 0; i < 30; i++) {
+                const mid = (low + high) / 2;
+                const savedAir = this.airDragCoeff;
+                this.airDragCoeff = 0;
+                const simTime = this.simulate0to100(mid);
+                this.airDragCoeff = savedAir;
+                if (simTime < targetTime) high = mid;
+                else low = mid;
+            }
+            this.accelScale = (low + high) / 2;
+
+            // 第二步：交替迭代校准 airDragCoeff（最高车速）与 accelScale（0-100时间）
+            // 由于两者耦合，迭代 3 轮让两个目标同时收敛
+            for (let round = 0; round < 3; round++) {
+                // 2a. 校准空气阻力系数，确保最高车速匹配
+                let airLow = 0.00005, airHigh = 0.08;
+                for (let i = 0; i < 40; i++) {
+                    const mid = (airLow + airHigh) / 2;
+                    this.airDragCoeff = mid;
+                    const simMax = this.simulateMaxSpeed();
+                    if (simMax > targetMaxSpeed) airLow = mid;
+                    else airHigh = mid;
+                }
+                this.airDragCoeff = (airLow + airHigh) / 2;
+
+                // 2b. 重新校准 accelScale，补偿空气阻力对0-100的影响
+                low = this.accelScale * 0.70;
+                high = this.accelScale * 1.50;
+                for (let i = 0; i < 40; i++) {
+                    const mid = (low + high) / 2;
+                    const simTime = this.simulate0to100(mid);
+                    if (simTime < targetTime) high = mid;
+                    else low = mid;
+                }
+                this.accelScale = (low + high) / 2;
+            }
+
+            // 第三步：最终验证，若0-100时间误差仍超过0.02秒则微调
+            const finalTime = this.simulate0to100(this.accelScale);
+            if (Math.abs(finalTime - targetTime) > 0.02) {
+                low = this.accelScale * 0.95;
+                high = this.accelScale * 1.05;
+                for (let i = 0; i < 50; i++) {
+                    const mid = (low + high) / 2;
+                    const simTime = this.simulate0to100(mid);
+                    if (simTime < targetTime) high = mid;
+                    else low = mid;
+                }
+                this.accelScale = (low + high) / 2;
+            }
+        },
+
+        // 模拟最高车速（用于校准），返回能达到的稳态最高速度
+        simulateMaxSpeed() {
+            const dt = 0.01;
+            let speed = 0;
+
+            for (let i = 0; i < 20000; i++) {
+                const accel = this.calculateAcceleration(speed);
+                speed += accel * dt;
+                if (accel < 0.01 && speed > 50) break;
+            }
+            return speed;
+        },
+
+        // 计算刹车减速度（km/h/s）
+        // 真实刹车特性：基础减速度由刹车距离决定，叠加速度相关曲线和发动机制动
+        // 1. 速度相关：中高速减速度较高，接近停车时ABS介入使减速度降低（避免轮胎锁死）
+        // 2. 发动机制动：燃油车刹车时叠加发动机制动（档位越低越强），电动车叠加动能回收
+        // 3. 真实上限：轮胎抓地力极限约 11-12 m/s²（40-43 km/h/s）
+        calculateBrakeDeceleration(speed, gearIndex) {
+            if (!this.selectedCar) return 0;
+            const car = this.selectedCar;
+            const useSpeed = speed ?? this.speed;
+            const useGear = gearIndex ?? this.currentGearIndex;
+            // 基础刹车减速度：由100-0刹车距离反推
+            // brakePerformance 是100-0km/h刹车距离（米），v²=2as → a=v²/(2s)
+            // 100km/h = 27.78 m/s，a = 27.78² / (2 * brakePerformance) m/s²
+            const refMs = CONSTANTS.BRAKE_REF_SPEED_MS;
+            const baseBrakeMs2 = (refMs * refMs) / (2 * car.brakePerformance);
+            let baseDecel = baseBrakeMs2 * 3.6; // 转换为 km/h/s
+
+            // 速度相关曲线：接近停车时ABS介入，减速度降低
+            // 低速区间（< BRAKE_LOW_SPEED_THRESHOLD）平滑衰减到 BRAKE_DECEL_LOW_SPEED_FACTOR
+            let speedFactor = 1.0;
+            if (useSpeed < CONSTANTS.BRAKE_LOW_SPEED_THRESHOLD) {
+                const t = this.smoothstep(useSpeed / CONSTANTS.BRAKE_LOW_SPEED_THRESHOLD);
+                speedFactor = CONSTANTS.BRAKE_DECEL_LOW_SPEED_FACTOR + (1 - CONSTANTS.BRAKE_DECEL_LOW_SPEED_FACTOR) * t;
+            }
+            baseDecel *= speedFactor;
+
+            // 叠加发动机制动减速度（燃油车）或动能回收减速度（电动车）
+            let engineBrakeDecel = 0;
+            if (car.isEV) {
+                // 电动车动能回收：高速时更强，低速时减弱
+                const speedRatio = useSpeed / car.maxSpeed;
+                const regenFactor = 1 + CONSTANTS.REGEN_DECEL_HIGH_SPEED_FACTOR * speedRatio;
+                engineBrakeDecel = CONSTANTS.REGEN_DECEL_BASE * regenFactor;
+            } else {
+                // 燃油车发动机制动：档位越低越强
+                const shiftCount = car.shiftCount || 1;
+                const gearFactor = (shiftCount - useGear) * CONSTANTS.ENGINE_BRAKE_DECEL_GEAR_FACTOR;
+                engineBrakeDecel = CONSTANTS.ENGINE_BRAKE_DECEL_BASE + gearFactor;
+            }
+
+            const totalDecel = baseDecel + engineBrakeDecel;
+            // 真实上限：轮胎抓地力极限
+            return Math.min(totalDecel, CONSTANTS.BRAKE_DECEL_MAX);
+        },
+
+        // 更新加速模拟
+        // 执行顺序与 simulate0to100 一致：先更新档位状态机（可能触发换挡），
+        // 再用更新后的 isShifting 状态计算加速度，确保换挡触发与扭矩中断在同一帧生效
+        updateAcceleration(timestamp) {
+            if (!this.isAccelerating) return;
+
+            const deltaTime = Math.min((timestamp - this.lastTimestamp) / 1000, 0.05); // 限制最大 delta 防止跳帧
+            this.lastTimestamp = timestamp;
+
+            // 1. 先更新档位和 RPM（可能触发换挡，设置 isShifting）
+            this.updateRPMAndGear(this.speed, deltaTime);
+
+            // 2. 再用更新后的 isShifting 状态计算加速度（换挡触发与扭矩中断同帧生效）
+            const accel = this.calculateAcceleration(this.speed);
+            this.speed = Math.max(0, this.speed + accel * deltaTime);
+
+            this.gear = this.getGearDisplay();
+
+            this.animationFrame = requestAnimationFrame((t) => this.updateAcceleration(t));
+        },
+
+        // 更新刹车模拟
+        // 执行顺序与加速一致：先更新档位（可能触发降档），再用新档位计算发动机制动
+        updateBraking(timestamp) {
+            if (!this.isBraking) return;
+
+            const deltaTime = Math.min((timestamp - this.lastTimestamp) / 1000, 0.05);
+            this.lastTimestamp = timestamp;
+
+            // 1. 先更新档位和 RPM（刹车降档更积极，RPM有发动机制动+降档跳升）
+            this.updateRPMAndGear(this.speed, deltaTime);
+
+            // 2. 用更新后的档位计算刹车减速度（发动机制动用新档位）
+            const decel = this.calculateBrakeDeceleration();
+            this.speed = Math.max(0, this.speed - decel * deltaTime);
+
+            this.gear = this.getGearDisplay();
+
+            // 速度为0时：若RPM仍高于怠速，继续运行让RPM通过发动机制动持续回落到怠速
+            // 避免转速冻结在高位，导致之后按下油门时转速跳变
+            if (this.speed <= 0) {
+                if (this.rpm <= CONSTANTS.IDLE_RPM + 20) {
+                    this.rpm = CONSTANTS.IDLE_RPM;
+                    this.stopBraking();
+                    return;
+                }
+                // RPM仍高于怠速：speed保持0，继续循环让RPM以发动机制动速率回落
+            }
+
+            this.animationFrame = requestAnimationFrame((t) => this.updateBraking(t));
+        },
+
+        // 自然减速（滑行）
+        // 真实滑行特性：松开油门后驱动力消失，车辆受阻力自然减速
+        // 1. 燃油车：滚动阻力 + 空气阻力 + 发动机制动（档位越低越强，模拟发动机牵引制动）
+        // 2. 电动车：滚动阻力 + 空气阻力 + 动能回收（速度相关，高速更强）
+        updateCoasting(timestamp) {
+            if (this.isAccelerating || this.isBraking || this.speed <= 0) {
+                this.stopCoasting();
+                return;
+            }
+
+            const deltaTime = Math.min((timestamp - this.lastTimestamp) / 1000, 0.05);
+            this.lastTimestamp = timestamp;
+
+            const car = this.selectedCar;
+            const speedMs = this.speed / 3.6;
+
+            // 基础阻力：滚动阻力 + 空气阻力（复用校准后的空气阻力系数，与加速时一致）
+            const coastAirCoeff = this.airDragCoeff ?? CONSTANTS.AIR_RESISTANCE_COEFF;
+            const coastAirDrag = coastAirCoeff * speedMs * speedMs;
+            let totalDecel = CONSTANTS.NATURAL_DECEL + coastAirDrag * 3.6;
+
+            // 叠加发动机制动（燃油车）或动能回收（电动车）
+            if (car) {
+                if (car.isEV) {
+                    // 电动车动能回收：松油门后电机反拖，高速时更强
+                    const speedRatio = this.speed / car.maxSpeed;
+                    const regenFactor = 1 + CONSTANTS.REGEN_DECEL_HIGH_SPEED_FACTOR * speedRatio;
+                    totalDecel += CONSTANTS.REGEN_DECEL_BASE * regenFactor;
+                } else {
+                    // 燃油车发动机制动：档位越低制动越强
+                    const shiftCount = car.shiftCount || 1;
+                    const gearFactor = (shiftCount - this.currentGearIndex) * CONSTANTS.ENGINE_BRAKE_DECEL_GEAR_FACTOR;
+                    const engineBrake = CONSTANTS.ENGINE_BRAKE_DECEL_BASE + gearFactor;
+                    // 发动机制动随速度降低而减弱（转速下降）
+                    const speedFactor = Math.max(0.3, this.speed / CONSTANTS.COAST_ENGINE_BRAKE_REF_SPEED);
+                    totalDecel += engineBrake * speedFactor;
+                }
+            }
+
+            this.speed = Math.max(0, this.speed - totalDecel * deltaTime);
+
+            // 更新档位和 RPM（滑行时温和降档）
+            this.updateRPMAndGear(this.speed, deltaTime);
+            this.gear = this.getGearDisplay();
+
+            if (this.speed <= 0) {
+                this.stopCoasting();
+                // 速度为0但RPM仍高于怠速：启动怠速回落循环
+                if (this.rpm > CONSTANTS.IDLE_RPM) {
+                    this.lastTimestamp = performance.now();
+                    this.animationFrame = requestAnimationFrame((t) => this.updateIdleReturn(t));
+                }
+                return;
+            }
+
+            this.animationFrame = requestAnimationFrame((t) => this.updateCoasting(t));
+        },
+
+        startAcceleration() {
+            if (!this.selectedCar || this.isAccelerating) return;
+            this.isAccelerating = true;
+            this.isBraking = false;
+            this.stopCoasting();
+
+            this.lastTimestamp = performance.now();
+            this.animationFrame = requestAnimationFrame((t) => this.updateAcceleration(t));
+        },
+
+        stopAcceleration() {
+            if (!this.isAccelerating) return;
+            this.isAccelerating = false;
+            if (this.animationFrame) {
+                cancelAnimationFrame(this.animationFrame);
+                this.animationFrame = null;
+            }
+            // 如果还有速度，启动滑行减速
+            if (this.speed > 0) {
+                this.lastTimestamp = performance.now();
+                this.animationFrame = requestAnimationFrame((t) => this.updateCoasting(t));
+            }
+        },
+
+        startBraking() {
+            if (!this.selectedCar || this.isBraking) return;
+            this.isBraking = true;
+            this.isAccelerating = false;
+            this.stopCoasting();
+
+            if (this.animationFrame) {
+                cancelAnimationFrame(this.animationFrame);
+                this.animationFrame = null;
+            }
+
+            this.lastTimestamp = performance.now();
+            this.animationFrame = requestAnimationFrame((t) => this.updateBraking(t));
+        },
+
+        stopBraking() {
+            if (!this.isBraking) return;
+            this.isBraking = false;
+            if (this.animationFrame) {
+                cancelAnimationFrame(this.animationFrame);
+                this.animationFrame = null;
+            }
+            // 如果还有速度，启动滑行减速
+            if (this.speed > 0) {
+                this.lastTimestamp = performance.now();
+                this.animationFrame = requestAnimationFrame((t) => this.updateCoasting(t));
+            } else if (this.rpm > CONSTANTS.IDLE_RPM) {
+                // 速度已为0但RPM仍高于怠速：启动怠速回落循环
+                this.lastTimestamp = performance.now();
+                this.animationFrame = requestAnimationFrame((t) => this.updateIdleReturn(t));
+            }
+        },
+
+        // 怠速回落：停车后RPM缓慢回落到怠速
+        // 真实发动机停车后，曲轴由于惯性继续旋转，转速缓慢下降至怠速
+        updateIdleReturn(timestamp) {
+            // 若有新的操作介入（加速/刹车/滑行），则退出怠速回落
+            if (this.isAccelerating || this.isBraking || this.speed > 0) {
+                return;
+            }
+
+            const deltaTime = Math.min((timestamp - this.lastTimestamp) / 1000, 0.05);
+            this.lastTimestamp = timestamp;
+
+            // 调用 updateRPMAndGear 推进 RPM 回落（速度为0时使用 IDLE_RETURN_RATE）
+            this.updateRPMAndGear(0, deltaTime);
+            this.gear = this.getGearDisplay();
+
+            // RPM 已回落到怠速附近，结束循环
+            if (this.rpm <= CONSTANTS.IDLE_RPM + 10) {
+                this.rpm = CONSTANTS.IDLE_RPM;
+                this.animationFrame = null;
+                return;
+            }
+
+            this.animationFrame = requestAnimationFrame((t) => this.updateIdleReturn(t));
+        },
+
+        stopCoasting() {
+            if (this.animationFrame && !this.isAccelerating && !this.isBraking) {
+                cancelAnimationFrame(this.animationFrame);
+                this.animationFrame = null;
+            }
+        },
+
+        selectCar(car) {
+            // 切换车型前停止所有模拟循环并重置速度，避免旧循环用新车型参数导致 RPM/档位错乱
+            this.isAccelerating = false;
+            this.isBraking = false;
+            if (this.animationFrame) {
+                cancelAnimationFrame(this.animationFrame);
+                this.animationFrame = null;
+            }
+            this.speed = 0;
+
+            this.selectedCar = car;
+            // 动态调整速度表量程（向上取整到最近的40的倍数，且至少200）
+            this.speedometerMax = Math.max(200, Math.ceil(car.maxSpeed / 40) * 40);
+            // 计算档位边界（与物理模型换挡点对齐）
+            this.gearBoundaries = this.getGearBoundaries();
+            // 重置档位/RPM状态
+            this.currentGearIndex = 0;
+            this.isShifting = false;
+            this.shiftTimer = 0;
+            this.shiftDirection = 0;
+            this.shiftStartRpm = 0;
+            this.shiftTargetRpm = 0;
+            this.lastSpeed = 0;
+            this.rpm = CONSTANTS.IDLE_RPM;
+            this.targetRpm = CONSTANTS.IDLE_RPM;
+            this.gear = 'N';
+            // 校准延迟到下一个事件循环，避免阻塞 UI 渲染
+            setTimeout(() => this.calibrateAcceleration(), 0);
+        }
+    };
+
+    // ============================================================
+    // UI 层 - DOM 操作与渲染
+    // ============================================================
+    const UI = {
+        // DOM 缓存
+        elements: {},
+
+        // 图表离屏 Canvas（网格层）
+        chartGridCanvas: null,
+
+        // 仪表盘离屏 Canvas（静态层：底面+刻度）
+        speedometerStaticCanvas: null,
+
+        // 仪表盘绘制参数（基于800x800 Canvas，拟物风格）
+        SP: {
+            cx: 400, cy: 400,           // 中心
+            outerR: 395,                 // 最外圈半径
+            bezelOuterR: 390,            // 金属边框外半径
+            bezelInnerR: 370,            // 金属边框内半径
+            faceR: 365,                  // 表盘面半径
+            tickOuterR: 325,             // 刻度线外端
+            majorTickLen: 28,            // 大刻度线长度
+            minorTickLen: 14,            // 小刻度线长度
+            labelR: 270,                 // 数字标注半径
+            innerRingR: 215,             // 内圈装饰环
+            needleLen: 310,              // 指针长度
+            needleTailLen: 35,           // 指针尾部
+            needleBaseW: 14,              // 指针底部宽度
+            capR: 18,                    // 中心帽半径
+            // 转速表（内环）布局参数
+            tachOuterR: 205,             // 转速弧外半径
+            tachInnerR: 180,             // 转速弧内半径
+            tachTickR: 210,              // 转速刻度线外端
+            tachMajorTickLen: 12,        // 转速大刻度线长度
+            tachMinorTickLen: 6,         // 转速小刻度线长度
+            tachLabelR: 162,             // 转速数字标注半径
+            tachFillWidth: 14,           // RPM填充弧宽度
+            tachBezelOuterR: 212,        // 转速表金属外圈半径
+            tachBezelInnerR: 174,        // 转速表金属内圈半径
+            tachLedSegmentStep: 250,     // LED分段步长（RPM）
+            tachLedGapDeg: 0.35,         // LED段间间隙（度）
+            tachIdleMarkR: 168,          // 怠速标记半径
+        },
+
+        // 初始化 DOM 引用
+        cacheElements() {
+            const ids = [
+                'brandSelect', 'modelSelect', 'carInfo', 'carName', 'carYear',
+                'accelerationTime', 'maxSpeed',
+                'speedometerCanvas',
+                'accelerateBtn', 'brakeBtn',
+                'accelerateBtnMobile', 'brakeBtnMobile',
+                'specsPanel', 'specsPlaceholder', 'specEngine', 'specPower',
+                'specTransmission', 'specBrake', 'specType'
+            ];
+            ids.forEach(id => {
+                this.elements[id] = document.getElementById(id);
+            });
+        },
+
+        // 填充品牌下拉
+        populateBrandSelect() {
+            const brandSelect = this.elements.brandSelect;
+            for (const brand in carData) {
+                const option = document.createElement('option');
+                option.value = brand;
+                option.textContent = brand;
+                brandSelect.appendChild(option);
+            }
+        },
+
+        // ============================================================
+        // Canvas 仪表盘绘制
+        // ============================================================
+
+        // 角度辅助：将速度值映射到弧度（0点在12点方向，顺时针为正）
+        speedToAngle(speed, maxSpeed) {
+            const startDeg = CONSTANTS.SPEEDOMETER_START_ANGLE; // -135
+            const rangeDeg = CONSTANTS.SPEEDOMETER_ANGLE_RANGE; // 270
+            const deg = startDeg + (speed / maxSpeed) * rangeDeg;
+            return (deg - 90) * Math.PI / 180; // 转为标准数学角度（0=右，逆时针），-90让0点在上方
+        },
+
+        // 角度辅助：将 RPM 值映射到弧度（与速度表同范围 -135°~135°）
+        rpmToAngle(rpm) {
+            const startDeg = CONSTANTS.SPEEDOMETER_START_ANGLE;
+            const rangeDeg = CONSTANTS.SPEEDOMETER_ANGLE_RANGE;
+            const ratio = Math.max(0, Math.min(1, rpm / CONSTANTS.MAX_RPM));
+            const deg = startDeg + ratio * rangeDeg;
+            return (deg - 90) * Math.PI / 180;
+        },
+
+        // 圆角矩形辅助函数
+        roundRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        },
+
+        // 绘制仪表盘静态层（拟物风格，多层光影质感）
+        drawSpeedometerStatic(maxSpeed) {
+            const sp = this.SP;
+            const size = 800;
+            const dpr = window.devicePixelRatio || 1;
+
+            if (!this.speedometerStaticCanvas) {
+                this.speedometerStaticCanvas = document.createElement('canvas');
+            }
+            if (this.speedometerStaticCanvas.width !== size * dpr) {
+                this.speedometerStaticCanvas.width = size * dpr;
+                this.speedometerStaticCanvas.height = size * dpr;
+            }
+            const ctx = this.speedometerStaticCanvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            ctx.clearRect(0, 0, size, size);
+
+            // === 1. 最外层投影（Canvas 外阴影） ===
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 25;
+            ctx.shadowOffsetY = 5;
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.outerR, 0, Math.PI * 2);
+            ctx.fillStyle = '#000';
+            ctx.fill();
+            ctx.restore();
+
+            // === 2. 金属外圈（暖色多层渐变，模拟玫瑰金拉丝金属） ===
+            // 外圈底色
+            const outerBase = ctx.createRadialGradient(sp.cx, sp.cy, sp.outerR - 30, sp.cx, sp.cy, sp.outerR);
+            outerBase.addColorStop(0, '#2a2a2e');
+            outerBase.addColorStop(0.5, '#1a1a1e');
+            outerBase.addColorStop(1, '#0e0e12');
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.outerR, 0, Math.PI * 2);
+            ctx.fillStyle = outerBase;
+            ctx.fill();
+
+            // 外圈顶部弧光（模拟上方光源照射金属外缘，暖色调）
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.outerR, 0, Math.PI * 2);
+            ctx.clip();
+            const outerTopLight = ctx.createLinearGradient(sp.cx, sp.cy - sp.outerR, sp.cx, sp.cy - sp.outerR * 0.4);
+            outerTopLight.addColorStop(0, 'rgba(220,225,235,0.18)');
+            outerTopLight.addColorStop(1, 'rgba(220,225,235,0)');
+            ctx.fillStyle = outerTopLight;
+            ctx.fillRect(sp.cx - sp.outerR, sp.cy - sp.outerR, sp.outerR * 2, sp.outerR * 0.6);
+            ctx.restore();
+
+            // 外圈底部暗面（暖色调）
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.outerR, 0, Math.PI * 2);
+            ctx.clip();
+            const outerBottomDark = ctx.createLinearGradient(sp.cx, sp.cy + sp.outerR * 0.5, sp.cx, sp.cy + sp.outerR);
+            outerBottomDark.addColorStop(0, 'rgba(0,0,0,0)');
+            outerBottomDark.addColorStop(1, 'rgba(0,0,0,0.35)');
+            ctx.fillStyle = outerBottomDark;
+            ctx.fillRect(sp.cx - sp.outerR, sp.cy, sp.outerR * 2, sp.outerR);
+            ctx.restore();
+
+            // === 3. 玫瑰金金属边框环（拉丝质感 + 多层渐变） ===
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.bezelOuterR, 0, Math.PI * 2);
+            ctx.arc(sp.cx, sp.cy, sp.bezelInnerR, 0, Math.PI * 2, true);
+            // 主渐变：上亮下暗（玫瑰金）
+            const bezelGrad = ctx.createLinearGradient(sp.cx, sp.cy - sp.bezelOuterR, sp.cx, sp.cy + sp.bezelOuterR);
+            bezelGrad.addColorStop(0, '#e8e8ec');
+            bezelGrad.addColorStop(0.15, '#c8c8d0');
+            bezelGrad.addColorStop(0.35, '#a8a8b2');
+            bezelGrad.addColorStop(0.5, '#d8d8e0');
+            bezelGrad.addColorStop(0.65, '#9898a2');
+            bezelGrad.addColorStop(0.85, '#808088');
+            bezelGrad.addColorStop(1, '#606068');
+            ctx.fillStyle = bezelGrad;
+            ctx.fill();
+
+            // 边框环顶部高光（模拟金属反光）
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.bezelOuterR - 1, -Math.PI * 0.85, -Math.PI * 0.15);
+            ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // 边框环底部暗线
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.bezelOuterR - 1, Math.PI * 0.15, Math.PI * 0.85);
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // 边框内缘暗线（与表盘分界）
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.bezelInnerR + 0.5, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // 边框外缘细高光
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.bezelOuterR - 0.5, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+            ctx.restore();
+
+            // === 4. 表盘底色（暗色调，带顶部微光 + 径向渐变） ===
+            const faceGrad = ctx.createRadialGradient(sp.cx, sp.cy - 80, 20, sp.cx, sp.cy + 30, sp.faceR);
+            faceGrad.addColorStop(0, '#2a2a30');
+            faceGrad.addColorStop(0.2, '#222228');
+            faceGrad.addColorStop(0.5, '#1c1c22');
+            faceGrad.addColorStop(0.75, '#18181e');
+            faceGrad.addColorStop(1, '#141418');
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.faceR, 0, Math.PI * 2);
+            ctx.fillStyle = faceGrad;
+            ctx.fill();
+
+            // 表盘顶部大面积弧形微光（模拟光源从上方照射）
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.faceR - 2, 0, Math.PI * 2);
+            ctx.clip();
+            const highlightGrad = ctx.createLinearGradient(sp.cx, sp.cy - sp.faceR, sp.cx, sp.cy - sp.faceR * 0.1);
+            highlightGrad.addColorStop(0, 'rgba(255,255,255,0.06)');
+            highlightGrad.addColorStop(0.3, 'rgba(255,255,255,0.02)');
+            highlightGrad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = highlightGrad;
+            ctx.fillRect(sp.cx - sp.faceR, sp.cy - sp.faceR, sp.faceR * 2, sp.faceR * 0.9);
+            ctx.restore();
+
+            // 表盘底部微暗（模拟下方阴影）
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.faceR - 2, 0, Math.PI * 2);
+            ctx.clip();
+            const faceBottom = ctx.createLinearGradient(sp.cx, sp.cy + sp.faceR * 0.3, sp.cx, sp.cy + sp.faceR);
+            faceBottom.addColorStop(0, 'rgba(0,0,0,0)');
+            faceBottom.addColorStop(1, 'rgba(0,0,0,0.15)');
+            ctx.fillStyle = faceBottom;
+            ctx.fillRect(sp.cx - sp.faceR, sp.cy, sp.faceR * 2, sp.faceR);
+            ctx.restore();
+
+            // 表盘内圈细暗线（装饰环）
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.tickOuterR + 12, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.innerRingR, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+
+            // --- 3. (黑色圆形装饰已移除) ---
+            // --- 5. (右侧扇形装饰图案已移除) ---
+
+            // === 6. 刻度线和数字（三层绘制：阴影+主体+高光，凸起质感） ===
+            const majorStep = 20;
+            const minorStep = 10;
+            const tickCount = maxSpeed / minorStep;
+
+            for (let i = 0; i <= tickCount; i++) {
+                const speedVal = i * minorStep;
+                const angle = this.speedToAngle(speedVal, maxSpeed);
+                const isMajor = speedVal % majorStep === 0;
+
+                const tickLen = isMajor ? sp.majorTickLen : sp.minorTickLen;
+                const outerR = sp.tickOuterR;
+                const innerR = outerR - tickLen;
+
+                const x1 = sp.cx + Math.cos(angle) * outerR;
+                const y1 = sp.cy + Math.sin(angle) * outerR;
+                const x2 = sp.cx + Math.cos(angle) * innerR;
+                const y2 = sp.cy + Math.sin(angle) * innerR;
+
+                // 第一层：右下阴影（凸起投影）
+                ctx.beginPath();
+                ctx.moveTo(x1 + 1, y1 + 1.2);
+                ctx.lineTo(x2 + 1, y2 + 1.2);
+                ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                ctx.lineWidth = isMajor ? 5 : 2.8;
+                ctx.lineCap = 'butt';
+                ctx.stroke();
+
+                // 第二层：刻度线主体（浅灰色，暗色表盘上清晰可见）
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.strokeStyle = 'rgba(220,220,230,0.85)';
+                ctx.lineWidth = isMajor ? 3.5 : 1.5;
+                ctx.lineCap = 'butt';
+                ctx.stroke();
+
+                // 第三层：左上高光（凸起顶部反光）
+                ctx.beginPath();
+                ctx.moveTo(x1 - 0.8, y1 - 0.8);
+                ctx.lineTo(x2 - 0.8, y2 - 0.8);
+                ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+                ctx.lineWidth = isMajor ? 1.2 : 0.5;
+                ctx.lineCap = 'butt';
+                ctx.stroke();
+
+                // 大刻度数字标注
+                if (isMajor) {
+                    const labelX = sp.cx + Math.cos(angle) * sp.labelR;
+                    const labelY = sp.cy + Math.sin(angle) * sp.labelR;
+
+                    // 数字投影（右下偏移）
+                    ctx.save();
+                    ctx.translate(labelX + 1, labelY + 1.2);
+                    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                    ctx.font = '600 28px "Helvetica Neue", Arial, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(String(speedVal), 0, 0);
+                    ctx.restore();
+
+                    // 数字主体（浅色，暗色表盘上清晰可见）
+                    ctx.save();
+                    ctx.translate(labelX, labelY);
+                    ctx.fillStyle = 'rgba(220,220,230,0.9)';
+                    ctx.font = '600 28px "Helvetica Neue", Arial, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(String(speedVal), 0, 0);
+                    ctx.restore();
+                }
+            }
+
+            // === 7. 表盘边缘暖色内圈线 ===
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.faceR - 4, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // === 8. 玻璃罩反光效果（暖色调多层） ===
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, sp.faceR - 6, 0, Math.PI * 2);
+            ctx.clip();
+
+            // 主反光：上方大面积弧形渐变（暖白）
+            const glassGrad = ctx.createLinearGradient(sp.cx, sp.cy - sp.faceR, sp.cx, sp.cy - sp.faceR * 0.15);
+            glassGrad.addColorStop(0, 'rgba(255,255,255,0.25)');
+            glassGrad.addColorStop(0.3, 'rgba(255,255,255,0.1)');
+            glassGrad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = glassGrad;
+            ctx.fillRect(sp.cx - sp.faceR, sp.cy - sp.faceR, sp.faceR * 2, sp.faceR * 0.85);
+            ctx.restore();
+
+            // === 8b. 表盘内 "km/h" 标识（位于中心帽上方，数字显示下方） ===
+            ctx.save();
+            ctx.font = '500 11px "Helvetica Neue", Arial, sans-serif';
+            ctx.fillStyle = 'rgba(180,180,190,0.5)';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('km/h', sp.cx, sp.cy + 68);
+            ctx.restore();
+
+            // === 9. 转速表静态层（仅燃油车绘制） ===
+            if (SimulationEngine.hasTachometer()) {
+                this.drawTachometerStatic(ctx);
+            }
+        },
+
+        // 绘制转速表静态层（RPM弧刻度、红线区、数字标注）
+        drawTachometerStatic(ctx) {
+            const sp = this.SP;
+            const maxRpm = CONSTANTS.MAX_RPM;
+            const redlineRpm = CONSTANTS.REDLINE_RPM;
+            const idleRpm = CONSTANTS.IDLE_RPM;
+            const startA = this.rpmToAngle(0);
+            const endA = this.rpmToAngle(maxRpm);
+
+            // === 9d. RPM 刻度线（金属质感渐变，红线区刻度发红光） ===
+            const rpmMajorStep = 2000;
+            const rpmMinorStep = 1000;
+            for (let rpm = 0; rpm <= maxRpm; rpm += rpmMinorStep) {
+                const angle = this.rpmToAngle(rpm);
+                const isMajor = rpm % rpmMajorStep === 0;
+                const isRedline = rpm >= redlineRpm;
+
+                const tickLen = isMajor ? sp.tachMajorTickLen : sp.tachMinorTickLen;
+                const outerR = sp.tachTickR;
+                const innerR = outerR - tickLen;
+
+                const x1 = sp.cx + Math.cos(angle) * outerR;
+                const y1 = sp.cy + Math.sin(angle) * outerR;
+                const x2 = sp.cx + Math.cos(angle) * innerR;
+                const y2 = sp.cy + Math.sin(angle) * innerR;
+
+                ctx.save();
+                if (isRedline) {
+                    // 红线区刻度：发红光
+                    ctx.shadowColor = 'rgba(255,60,40,0.8)';
+                    ctx.shadowBlur = 4;
+                    ctx.strokeStyle = 'rgba(220,50,35,0.95)';
+                    ctx.lineWidth = isMajor ? 2.2 : 1.3;
+                } else {
+                    // 普通刻度：暖色金属质感渐变
+                    const tickGrad = ctx.createLinearGradient(x1, y1, x2, y2);
+                    tickGrad.addColorStop(0, 'rgba(40,40,50,0.85)');
+                    tickGrad.addColorStop(0.5, 'rgba(100,100,110,0.9)');
+                    tickGrad.addColorStop(1, 'rgba(60,60,70,0.85)');
+                    ctx.strokeStyle = tickGrad;
+                    ctx.lineWidth = isMajor ? 2 : 1;
+                }
+                ctx.lineCap = 'butt';
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // === 9e. RPM 数字标注（Fraunces 衬线，红线区发红光） ===
+            ctx.save();
+            ctx.font = '600 16px "Helvetica Neue", Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            for (let rpm = 0; rpm <= maxRpm; rpm += rpmMajorStep) {
+                const angle = this.rpmToAngle(rpm);
+                const labelX = sp.cx + Math.cos(angle) * sp.tachLabelR;
+                const labelY = sp.cy + Math.sin(angle) * sp.tachLabelR;
+                const isRedline = rpm >= redlineRpm;
+
+                if (isRedline) {
+                    ctx.shadowColor = 'rgba(255,60,40,0.9)';
+                    ctx.shadowBlur = 5;
+                    ctx.fillStyle = 'rgba(230,60,45,0.95)';
+                } else {
+                    // 普通数字：暖色带细微浮雕
+                    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                    ctx.shadowBlur = 1;
+                    ctx.shadowOffsetY = 1;
+                    ctx.fillStyle = 'rgba(180,180,190,0.85)';
+                }
+                ctx.fillText(String(rpm / 1000), labelX, labelY);
+            }
+            ctx.restore();
+
+            // === 9f. "x1000 r/min" 单位标注（暖色金属质感） ===
+            ctx.save();
+            ctx.font = '500 9px "Helvetica Neue", Arial, sans-serif';
+            ctx.fillStyle = 'rgba(130,130,140,0.7)';
+            ctx.shadowColor = 'rgba(0,0,0,0.4)';
+            ctx.shadowBlur = 1;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('x1000  r/min', sp.cx, sp.cy - sp.tachLabelR + 14);
+            ctx.restore();
+
+            // === 9g. 怠速标记（800 RPM 处的小三角警示） ===
+            const idleAngle = this.rpmToAngle(idleRpm);
+            ctx.save();
+            ctx.translate(sp.cx, sp.cy);
+            ctx.rotate(idleAngle + Math.PI / 2);
+            ctx.translate(0, -sp.tachIdleMarkR);
+            ctx.fillStyle = 'rgba(100,180,255,0.7)';
+            ctx.shadowColor = 'rgba(100,180,255,0.5)';
+            ctx.shadowBlur = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-3, -5);
+            ctx.lineTo(3, -5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+
+            // === 9h. 红线区警示符号（"!"三角，位于红线区中部外侧） ===
+            const warnAngle = this.rpmToAngle((redlineRpm + maxRpm) / 2);
+            const warnX = sp.cx + Math.cos(warnAngle) * (sp.tachBezelOuterR + 8);
+            const warnY = sp.cy + Math.sin(warnAngle) * (sp.tachBezelOuterR + 8);
+            ctx.save();
+            ctx.translate(warnX, warnY);
+            ctx.rotate(warnAngle + Math.PI / 2);
+            ctx.fillStyle = 'rgba(220,50,35,0.9)';
+            ctx.shadowColor = 'rgba(255,60,40,0.7)';
+            ctx.shadowBlur = 4;
+            ctx.beginPath();
+            ctx.moveTo(0, -5);
+            ctx.lineTo(-4.5, 3);
+            ctx.lineTo(4.5, 3);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.95)';
+            ctx.font = '700 7px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('!', 0, 0);
+            ctx.restore();
+        },
+
+        // 根据RPM获取颜色：低暖绿、中暖黄、高暖橙、红线红
+        getRpmColor(rpm) {
+            const redlineRpm = CONSTANTS.REDLINE_RPM;
+            let r, g, b;
+            if (rpm < redlineRpm * 0.5) {
+                const t = rpm / (redlineRpm * 0.5);
+                r = Math.floor(60 + t * 140);
+                g = Math.floor(180 - t * 20);
+                b = Math.floor(50 - t * 10);
+            } else if (rpm < redlineRpm * 0.8) {
+                const t = (rpm - redlineRpm * 0.5) / (redlineRpm * 0.3);
+                r = 200 + Math.floor(t * 55);
+                g = Math.floor(160 - t * 60);
+                b = Math.floor(40 - t * 20);
+            } else if (rpm < redlineRpm) {
+                const t = (rpm - redlineRpm * 0.8) / (redlineRpm * 0.2);
+                r = 255;
+                g = Math.floor(100 - t * 50);
+                b = Math.floor(20 + t * 10);
+            } else {
+                r = 255; g = 50; b = 35;
+            }
+            return { r, g, b };
+        },
+
+        // 预渲染LED灯珠精灵到离屏canvas（按颜色+半径缓存，避免每帧创建100+径向渐变）
+        // 离屏渲染的4层效果与逐层绘制数学等价（source-over合成结合律），brightness通过drawImage时的globalAlpha实现
+        preRenderLedSprite(color, dotRadius, isLit) {
+            if (!this._ledSpriteCache) this._ledSpriteCache = {};
+            const key = `${color.r},${color.g},${color.b}|${dotRadius}|${isLit ? 1 : 0}`;
+            if (this._ledSpriteCache[key]) return this._ledSpriteCache[key];
+
+            const r = color.r, g = color.g, b = color.b;
+            const pad = Math.ceil(dotRadius * 1.05 + 12);
+            const size = pad * 2;
+            const cvs = document.createElement('canvas');
+            cvs.width = size;
+            cvs.height = size;
+            const sctx = cvs.getContext('2d');
+            const cx = pad, cy = pad;
+
+            if (isLit) {
+                // 层1：外发光晕
+                sctx.save();
+                sctx.shadowColor = `rgba(${r},${g},${b},0.6)`;
+                sctx.shadowBlur = 6;
+                sctx.beginPath();
+                sctx.arc(cx, cy, dotRadius * 1.05, 0, Math.PI * 2);
+                sctx.fillStyle = `rgba(${r},${g},${b},0.2)`;
+                sctx.fill();
+                sctx.restore();
+                // 层2：灯珠主体（径向渐变）
+                sctx.beginPath();
+                sctx.arc(cx, cy, dotRadius, 0, Math.PI * 2);
+                const ledGrad = sctx.createRadialGradient(cx - dotRadius * 0.2, cy - dotRadius * 0.2, 0, cx, cy, dotRadius);
+                ledGrad.addColorStop(0, `rgba(${Math.min(255, r + 80)},${Math.min(255, g + 80)},${Math.min(255, b + 60)},0.95)`);
+                ledGrad.addColorStop(0.5, `rgba(${r},${g},${b},0.9)`);
+                ledGrad.addColorStop(1, `rgba(${Math.floor(r * 0.7)},${Math.floor(g * 0.6)},${Math.floor(b * 0.5)},0.85)`);
+                sctx.fillStyle = ledGrad;
+                sctx.fill();
+                // 层3：内核高亮
+                sctx.beginPath();
+                sctx.arc(cx, cy, dotRadius * 0.4, 0, Math.PI * 2);
+                sctx.fillStyle = `rgba(${Math.min(255, r + 120)},${Math.min(255, g + 120)},${Math.min(255, b + 100)},0.7)`;
+                sctx.fill();
+                // 层4：玻璃罩高光
+                sctx.beginPath();
+                sctx.arc(cx - dotRadius * 0.25, cy - dotRadius * 0.25, dotRadius * 0.25, 0, Math.PI * 2);
+                sctx.fillStyle = `rgba(255,255,240,0.2)`;
+                sctx.fill();
+            } else {
+                // 暗色凹槽
+                sctx.beginPath();
+                sctx.arc(cx, cy, dotRadius * 0.8, 0, Math.PI * 2);
+                sctx.fillStyle = `rgba(${Math.floor(r * 0.08)},${Math.floor(g * 0.08)},${Math.floor(b * 0.08)},0.5)`;
+                sctx.fill();
+                sctx.beginPath();
+                sctx.arc(cx, cy, dotRadius * 0.4, 0, Math.PI * 2);
+                sctx.fillStyle = `rgba(${Math.floor(r * 0.04)},${Math.floor(g * 0.04)},${Math.floor(b * 0.04)},0.4)`;
+                sctx.fill();
+                sctx.beginPath();
+                sctx.arc(cx, cy, dotRadius * 0.8, 0, Math.PI * 2);
+                sctx.strokeStyle = `rgba(${Math.floor(r * 0.12)},${Math.floor(g * 0.12)},${Math.floor(b * 0.12)},0.25)`;
+                sctx.lineWidth = 0.4;
+                sctx.stroke();
+            }
+
+            const sprite = { canvas: cvs, pad };
+            this._ledSpriteCache[key] = sprite;
+            return sprite;
+        },
+
+        // 绘制点亮LED灯珠（共享方法：drawDotMatrixChar与drawLedSegments共用）
+        drawLedDot(ctx, x, y, dotRadius, color, brightness) {
+            const sprite = this.preRenderLedSprite(color, dotRadius, true);
+            ctx.save();
+            ctx.globalAlpha = brightness;
+            ctx.drawImage(sprite.canvas, x - sprite.pad, y - sprite.pad);
+            ctx.restore();
+        },
+
+        // 绘制暗色LED灯珠凹槽（共享方法）
+        drawLedDotDark(ctx, x, y, dotRadius, color) {
+            const sprite = this.preRenderLedSprite(color, dotRadius, false);
+            ctx.drawImage(sprite.canvas, x - sprite.pad, y - sprite.pad);
+        },
+
+        // 绘制转速LED灯珠阵列（灯珠样式与速度点阵一致）
+        drawLedSegments(ctx, rpm) {
+            const sp = this.SP;
+            const maxRpm = CONSTANTS.MAX_RPM;
+            const startAngle = this.rpmToAngle(0);
+            const endAngle = this.rpmToAngle(maxRpm);
+            const arcR = (sp.tachOuterR + sp.tachInnerR) / 2;
+            const fillW = sp.tachFillWidth;
+            const totalAngle = endAngle - startAngle;
+
+            // 灯珠参数
+            const totalLeds = 48;
+            const dotR = fillW * 0.38;
+            const segAngle = totalAngle / totalLeds;
+            const litCount = (rpm / maxRpm) * totalLeds;
+            const litFull = Math.floor(litCount);
+            const litPartial = litCount - litFull;
+            // LED颜色随转速变化（低暖绿→高暖橙→红线红），rpm 不变，提到循环外只算一次
+            const col = this.getRpmColor(rpm);
+
+            for (let i = 0; i < totalLeds; i++) {
+                const angle = startAngle + (i + 0.5) * segAngle;
+                const x = sp.cx + Math.cos(angle) * arcR;
+                const y = sp.cy + Math.sin(angle) * arcR;
+                const isLit = i < litFull;
+                const isPartial = i === litFull;
+
+                if (isLit) {
+                    // === 点亮灯珠（使用预渲染精灵） ===
+                    this.drawLedDot(ctx, x, y, dotR, col, 1);
+                } else if (isPartial) {
+                    // === 部分点亮 ===
+                    const p = litPartial;
+                    ctx.save();
+                    ctx.shadowColor = `rgba(${col.r},${col.g},${col.b},${0.5 * p})`;
+                    ctx.shadowBlur = 5 * p;
+                    ctx.beginPath();
+                    ctx.arc(x, y, dotR * (0.8 + 0.2 * p), 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(${col.r},${col.g},${col.b},${0.3 + 0.6 * p})`;
+                    ctx.fill();
+                    if (p > 0.4) {
+                        ctx.shadowBlur = 0;
+                        ctx.beginPath();
+                        ctx.arc(x, y, dotR * 0.4, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(${Math.min(255, col.r + 100)},${Math.min(255, col.g + 100)},${col.b},${0.6 * p})`;
+                        ctx.fill();
+                    }
+                    ctx.restore();
+
+                } else {
+                    // === 未点亮（暗灯珠凹槽） ===
+                    this.drawLedDotDark(ctx, x, y, dotR, col);
+                }
+            }
+        },
+
+        // 绘制指针（经典豪华车风格：细长锥形 + 红色尖端 + 金属杆身）
+        drawNeedle(ctx, speed, maxSpeed) {
+            const sp = this.SP;
+            const angle = this.speedToAngle(speed, maxSpeed);
+
+            ctx.save();
+            ctx.translate(sp.cx, sp.cy);
+            ctx.rotate(angle + Math.PI / 2);
+
+            const len = sp.needleLen;
+            const tailLen = sp.needleTailLen; // 配重尾端长度
+            const tipW = 3;     // 顶端宽度
+            const midW = 10;    // 中段最宽处
+            const baseW = 14;   // 底部（转轴处）宽度
+
+            // === 投影 ===
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 12;
+            ctx.shadowOffsetX = 3;
+            ctx.shadowOffsetY = 4;
+
+            // 指针轮廓：从配重尾端 → 底部 → 锥形收窄 → 尖端
+            ctx.beginPath();
+            // 配重尾端（左）
+            ctx.moveTo(-baseW / 2, tailLen);
+            // 底部左侧弧线到中段
+            ctx.quadraticCurveTo(-midW / 2 - 1, tailLen * 0.3, -midW / 2, -len * 0.15);
+            // 中段到顶端（左边缘，平滑收窄）
+            ctx.quadraticCurveTo(-tipW, -len * 0.6, -tipW / 2, -len);
+            // 顶端
+            ctx.lineTo(tipW / 2, -len);
+            // 右边缘（顶端到底部）
+            ctx.quadraticCurveTo(tipW, -len * 0.6, midW / 2, -len * 0.15);
+            // 底部右侧弧线到配重尾端
+            ctx.quadraticCurveTo(midW / 2 + 1, tailLen * 0.3, baseW / 2, tailLen);
+            ctx.closePath();
+
+            // 金属杆身渐变（深灰到亮银，模拟抛光金属）
+            const bodyGrad = ctx.createLinearGradient(-midW / 2, 0, midW / 2, 0);
+            bodyGrad.addColorStop(0, '#2a2a30');
+            bodyGrad.addColorStop(0.2, '#4a4a52');
+            bodyGrad.addColorStop(0.4, '#8a8a92');
+            bodyGrad.addColorStop(0.5, '#a0a0a8');
+            bodyGrad.addColorStop(0.6, '#8a8a92');
+            bodyGrad.addColorStop(0.8, '#4a4a52');
+            bodyGrad.addColorStop(1, '#2a2a30');
+            ctx.fillStyle = bodyGrad;
+            ctx.fill();
+            ctx.restore();
+
+            // === 红色尖端（覆盖指针前1/3，经典跑车风格） ===
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(-midW / 2, -len * 0.15);
+            ctx.quadraticCurveTo(-tipW, -len * 0.6, -tipW / 2, -len);
+            ctx.lineTo(tipW / 2, -len);
+            ctx.quadraticCurveTo(tipW, -len * 0.6, midW / 2, -len * 0.15);
+            ctx.closePath();
+            const redGrad = ctx.createLinearGradient(-midW / 2, -len * 0.15, midW / 2, -len * 0.15);
+            redGrad.addColorStop(0, '#8a1010');
+            redGrad.addColorStop(0.2, '#c41818');
+            redGrad.addColorStop(0.4, '#e02020');
+            redGrad.addColorStop(0.5, '#e82828');
+            redGrad.addColorStop(0.6, '#e02020');
+            redGrad.addColorStop(0.8, '#c41818');
+            redGrad.addColorStop(1, '#8a1010');
+            ctx.fillStyle = redGrad;
+            ctx.fill();
+            ctx.restore();
+
+            // === 中心高光条（金属反光） ===
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(0.5, tailLen - 5);
+            ctx.lineTo(1, -len * 0.15);
+            ctx.lineTo(0.5, -len + 2);
+            ctx.lineTo(-0.5, -len + 2);
+            ctx.lineTo(-1, -len * 0.15);
+            ctx.lineTo(-0.5, tailLen - 5);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(255,255,255,0.18)';
+            ctx.fill();
+            ctx.restore();
+
+            // === 配重尾端（加宽的圆形配重） ===
+            ctx.save();
+            ctx.beginPath();
+            ctx.ellipse(0, tailLen - 2, baseW / 2 + 1, 6, 0, 0, Math.PI * 2);
+            const counterGrad = ctx.createRadialGradient(-1, tailLen - 3, 0, 0, tailLen - 2, baseW / 2 + 1);
+            counterGrad.addColorStop(0, '#6a6a72');
+            counterGrad.addColorStop(0.5, '#4a4a52');
+            counterGrad.addColorStop(1, '#2a2a30');
+            ctx.fillStyle = counterGrad;
+            ctx.fill();
+            // 配重高光
+            ctx.beginPath();
+            ctx.ellipse(-1, tailLen - 4, 2, 1.5, -0.2, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.fill();
+            ctx.restore();
+
+            ctx.restore();
+        },
+
+        // 绘制中心帽（抛光金属轮毂盖风格）
+        drawCenterCap(ctx) {
+            const sp = this.SP;
+            const capR = sp.capR;
+
+            ctx.save();
+
+            // 1. 最外层阴影圈
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, capR + 2, 0, Math.PI * 2);
+            ctx.fillStyle = '#0a0a0e';
+            ctx.fill();
+
+            // 2. 外环（深色金属环，模拟轮毂盖边缘）
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, capR, 0, Math.PI * 2);
+            const outerRing = ctx.createLinearGradient(sp.cx - capR, sp.cy - capR, sp.cx + capR, sp.cy + capR);
+            outerRing.addColorStop(0, '#505058');
+            outerRing.addColorStop(0.3, '#3a3a42');
+            outerRing.addColorStop(0.5, '#2a2a32');
+            outerRing.addColorStop(0.7, '#3a3a42');
+            outerRing.addColorStop(1, '#505058');
+            ctx.fillStyle = outerRing;
+            ctx.fill();
+
+            // 3. 主凸面（抛光金属，上亮下暗）
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, capR - 2, 0, Math.PI * 2);
+            const mainFace = ctx.createRadialGradient(sp.cx - 3, sp.cy - 4, 2, sp.cx, sp.cy + 2, capR - 2);
+            mainFace.addColorStop(0, '#e8e8f0');
+            mainFace.addColorStop(0.2, '#d0d0d8');
+            mainFace.addColorStop(0.5, '#b0b0b8');
+            mainFace.addColorStop(0.75, '#808088');
+            mainFace.addColorStop(1, '#505058');
+            ctx.fillStyle = mainFace;
+            ctx.fill();
+
+            // 4. 同心圆装饰纹（模拟抛光金属纹理）
+            for (let r = capR * 0.3; r < capR - 3; r += 3) {
+                ctx.beginPath();
+                ctx.arc(sp.cx, sp.cy, r, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(255,255,255,${0.04 + (capR - r) / capR * 0.06})`;
+                ctx.lineWidth = 0.4;
+                ctx.stroke();
+            }
+
+            // 5. 顶部弧形高光（凸面受光）
+            ctx.beginPath();
+            ctx.arc(sp.cx - 1, sp.cy - 2, capR * 0.6, -Math.PI * 0.9, -Math.PI * 0.1);
+            ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 6. 内圈凹陷（中心螺丝/标识区域）
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, capR * 0.35, 0, Math.PI * 2);
+            const innerGrad = ctx.createRadialGradient(sp.cx, sp.cy - 1, 0, sp.cx, sp.cy, capR * 0.35);
+            innerGrad.addColorStop(0, '#1a1a20');
+            innerGrad.addColorStop(0.7, '#141418');
+            innerGrad.addColorStop(1, '#2a2a32');
+            ctx.fillStyle = innerGrad;
+            ctx.fill();
+
+            // 7. 内圈边缘高光
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, capR * 0.35, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(200,200,210,0.2)';
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+
+            // 8. 中心小点
+            ctx.beginPath();
+            ctx.arc(sp.cx, sp.cy, 1.5, 0, Math.PI * 2);
+            ctx.fillStyle = '#0a0a0e';
+            ctx.fill();
+
+            ctx.restore();
+        },
+
+        // LED 5x7 点阵字体定义
+        DOT_MATRIX_FONT: {
+            '0': [
+                [0,1,1,1,0],
+                [1,0,0,0,1],
+                [1,0,0,1,1],
+                [1,0,1,0,1],
+                [1,1,0,0,1],
+                [1,0,0,0,1],
+                [0,1,1,1,0]
+            ],
+            '1': [
+                [0,0,1,0,0],
+                [0,1,1,0,0],
+                [1,0,1,0,0],
+                [0,0,1,0,0],
+                [0,0,1,0,0],
+                [0,0,1,0,0],
+                [1,1,1,1,1]
+            ],
+            '2': [
+                [0,1,1,1,0],
+                [1,0,0,0,1],
+                [0,0,0,0,1],
+                [0,0,1,1,0],
+                [0,1,0,0,0],
+                [1,0,0,0,0],
+                [1,1,1,1,1]
+            ],
+            '3': [
+                [0,1,1,1,0],
+                [1,0,0,0,1],
+                [0,0,0,0,1],
+                [0,0,1,1,0],
+                [0,0,0,0,1],
+                [1,0,0,0,1],
+                [0,1,1,1,0]
+            ],
+            '4': [
+                [0,0,0,1,0],
+                [0,0,1,1,0],
+                [0,1,0,1,0],
+                [1,0,0,1,0],
+                [1,1,1,1,1],
+                [0,0,0,1,0],
+                [0,0,0,1,0]
+            ],
+            '5': [
+                [1,1,1,1,1],
+                [1,0,0,0,0],
+                [1,1,1,1,0],
+                [0,0,0,0,1],
+                [0,0,0,0,1],
+                [1,0,0,0,1],
+                [0,1,1,1,0]
+            ],
+            '6': [
+                [0,1,1,1,0],
+                [1,0,0,0,0],
+                [1,0,0,0,0],
+                [1,1,1,1,0],
+                [1,0,0,0,1],
+                [1,0,0,0,1],
+                [0,1,1,1,0]
+            ],
+            '7': [
+                [1,1,1,1,1],
+                [0,0,0,0,1],
+                [0,0,0,1,0],
+                [0,0,1,0,0],
+                [0,0,1,0,0],
+                [0,0,1,0,0],
+                [0,0,1,0,0]
+            ],
+            '8': [
+                [0,1,1,1,0],
+                [1,0,0,0,1],
+                [1,0,0,0,1],
+                [0,1,1,1,0],
+                [1,0,0,0,1],
+                [1,0,0,0,1],
+                [0,1,1,1,0]
+            ],
+            '9': [
+                [0,1,1,1,0],
+                [1,0,0,0,1],
+                [1,0,0,0,1],
+                [0,1,1,1,1],
+                [0,0,0,0,1],
+                [0,0,0,0,1],
+                [0,1,1,1,0]
+            ],
+            'N': [
+                [1,0,0,0,1],
+                [1,1,0,0,1],
+                [1,0,1,0,1],
+                [1,0,0,1,1],
+                [1,0,0,0,1],
+                [1,0,0,0,1],
+                [1,0,0,0,1]
+            ],
+            'D': [
+                [1,1,1,1,0],
+                [1,0,0,0,1],
+                [1,0,0,0,1],
+                [1,0,0,0,1],
+                [1,0,0,0,1],
+                [1,0,0,0,1],
+                [1,1,1,1,0]
+            ],
+            'P': [
+                [0,1,1,1,0],
+                [1,0,0,0,1],
+                [1,0,0,0,1],
+                [0,1,1,1,0],
+                [1,0,0,0,0],
+                [1,0,0,0,0],
+                [1,0,0,0,0]
+            ],
+            'R': [
+                [0,1,1,1,0],
+                [1,0,0,0,1],
+                [1,0,0,0,1],
+                [0,1,1,1,0],
+                [1,0,1,0,0],
+                [1,0,0,1,0],
+                [1,0,0,0,1]
+            ],
+            'E': [
+                [1,1,1,1,1],
+                [1,0,0,0,0],
+                [1,0,0,0,0],
+                [1,1,1,1,0],
+                [1,0,0,0,0],
+                [1,0,0,0,0],
+                [1,1,1,1,1]
+            ],
+            'S': [
+                [0,1,1,1,0],
+                [1,0,0,0,0],
+                [1,0,0,0,0],
+                [0,1,1,1,0],
+                [0,0,0,0,1],
+                [0,0,0,0,1],
+                [0,1,1,1,0]
+            ],
+            'L': [
+                [1,0,0,0,0],
+                [1,0,0,0,0],
+                [1,0,0,0,0],
+                [1,0,0,0,0],
+                [1,0,0,0,0],
+                [1,0,0,0,0],
+                [1,1,1,1,1]
+            ]
+        },
+
+        // 绘制 LED 点阵字符
+        drawDotMatrixChar(ctx, char, x, y, dotSpacing, dotRadius, brightness, color) {
+            const font = this.DOT_MATRIX_FONT[char];
+            if (!font) return;
+            for (let row = 0; row < 7; row++) {
+                for (let col = 0; col < 5; col++) {
+                    const cx = x + col * dotSpacing;
+                    const cy = y + row * dotSpacing;
+                    const isOn = font[row][col] === 1;
+                    if (isOn) {
+                        // 点亮灯珠（使用预渲染精灵，brightness通过globalAlpha实现，效果与逐层绘制一致）
+                        this.drawLedDot(ctx, cx, cy, dotRadius, color, brightness);
+                    } else {
+                        // 暗色凹槽
+                        this.drawLedDotDark(ctx, cx, cy, dotRadius, color);
+                    }
+                }
+            }
+        },
+
+        // 绘制LED显示框的静态金属边框+面板+反光层（drawDigitalSpeed 与 drawGearIndicator 共享）
+        // 参数：boxX/boxY/boxW/boxH 框位置与尺寸，bezelR 外金属边圆角，innerR 内面板圆角，
+        //       centerCx 面板径向渐变中心X（通常为仪表盘中心 cx）
+        // 包含：外框金属边、内缘高光、深色面板、内凹阴影、玻璃罩反光
+        drawLedBoxChrome(ctx, boxX, boxY, boxW, boxH, bezelR, innerR, centerCx) {
+            // === 1. 外框金属边（玫瑰金金属质感） ===
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetY = 3;
+            UI.roundRect(ctx, boxX - 2, boxY - 2, boxW + 4, boxH + 4, bezelR);
+            const bezelGrad = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxH);
+            bezelGrad.addColorStop(0, '#b0b0b8');
+            bezelGrad.addColorStop(0.15, '#c0c0c8');
+            bezelGrad.addColorStop(0.3, '#9898a0');
+            bezelGrad.addColorStop(0.7, '#707078');
+            bezelGrad.addColorStop(0.85, '#808088');
+            bezelGrad.addColorStop(1, '#505058');
+            ctx.fillStyle = bezelGrad;
+            ctx.fill();
+            ctx.restore();
+
+            // 确保阴影状态完全清除
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+
+            // === 2. 金属边框内缘高光 ===
+            UI.roundRect(ctx, boxX - 1, boxY - 1, boxW + 2, boxH + 2, bezelR - 1);
+            ctx.strokeStyle = 'rgba(200,200,210,0.3)';
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+
+            // === 3. 深色显示面板（内凹，暖色调） ===
+            UI.roundRect(ctx, boxX, boxY, boxW, boxH, innerR);
+            const panelGrad = ctx.createRadialGradient(
+                centerCx, boxY + boxH * 0.3, boxW * 0.2,
+                centerCx, boxY + boxH * 0.5, boxW * 0.8
+            );
+            panelGrad.addColorStop(0, '#141418');
+            panelGrad.addColorStop(0.5, '#101014');
+            panelGrad.addColorStop(1, '#080810');
+            ctx.fillStyle = panelGrad;
+            ctx.fill();
+
+            // === 4. 内凹阴影（上边缘暗、下边缘亮，模拟凹陷） ===
+            ctx.save();
+            ctx.beginPath();
+            UI.roundRect(ctx, boxX, boxY, boxW, boxH, innerR);
+            ctx.clip();
+            const topShadow = ctx.createLinearGradient(boxX, boxY, boxX, boxY + 8);
+            topShadow.addColorStop(0, 'rgba(0,0,0,0.5)');
+            topShadow.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = topShadow;
+            ctx.fillRect(boxX, boxY, boxW, 8);
+            const bottomLight = ctx.createLinearGradient(boxX, boxY + boxH - 6, boxX, boxY + boxH);
+            bottomLight.addColorStop(0, 'rgba(200,200,210,0)');
+            bottomLight.addColorStop(1, 'rgba(200,200,210,0.04)');
+            ctx.fillStyle = bottomLight;
+            ctx.fillRect(boxX, boxY + boxH - 6, boxW, 6);
+            ctx.restore();
+        },
+
+        // 绘制LED显示框的玻璃罩反光层（在LED内容绘制后调用）
+        drawLedBoxGlass(ctx, boxX, boxY, boxW, boxH, innerR) {
+            ctx.save();
+            ctx.beginPath();
+            UI.roundRect(ctx, boxX, boxY, boxW, boxH, innerR);
+            ctx.clip();
+            // 主反光（上半部分弧形高光）
+            const glassGrad = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxH * 0.5);
+            glassGrad.addColorStop(0, 'rgba(255,255,255,0.1)');
+            glassGrad.addColorStop(0.5, 'rgba(255,255,255,0.03)');
+            glassGrad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = glassGrad;
+            ctx.fillRect(boxX, boxY, boxW, boxH * 0.5);
+            // 左上角小亮点
+            const spotGrad = ctx.createRadialGradient(boxX + boxW * 0.15, boxY + 4, 0, boxX + boxW * 0.15, boxY + 4, boxW * 0.3);
+            spotGrad.addColorStop(0, 'rgba(255,255,255,0.08)');
+            spotGrad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = spotGrad;
+            ctx.fillRect(boxX, boxY, boxW * 0.5, boxH * 0.4);
+            ctx.restore();
+        },
+
+        // 绘制7段LED数字车速显示（真实汽车仪表盘质感）
+        drawDigitalSpeed(ctx, speed) {
+            const sp = this.SP;
+            const digitW = 30;     // 单数字宽度
+            const digitH = 48;     // 单数字高度
+            const gap = 5;         // 数字间距
+            const totalW = digitW * 3 + gap * 2;
+            const startX = sp.cx - totalW / 2;
+            const startY = sp.cy + 95; // 中心帽下方
+
+            // 速度转字符串（右对齐，补零到3位）
+            const speedInt = Math.max(0, Math.min(999, Math.round(speed)));
+            const speedStr = speedInt.toString().padStart(3, '0');
+
+            // 背景凹槽尺寸
+            const padX = 14, padY = 10;
+            const bgW = totalW + padX * 2;
+            const bgH = digitH + padY * 2;
+            const bgX = startX - padX;
+            const bgY = startY - padY;
+
+            // 统一圆角参数（与档位框协调，小圆角保持质感）
+            const bezelR = 8;   // 外金属边圆角
+            const innerR = 6;   // 内面板圆角
+
+            // === 1-4. 静态金属边框+面板+内凹阴影（共享方法） ===
+            this.drawLedBoxChrome(ctx, bgX, bgY, bgW, bgH, bezelR, innerR, sp.cx);
+
+            // === 5. 绘制3个LED点阵数字 ===
+            const brightness = 1;
+            const dotSpacing = 6.5;
+            const dotRadius = 2.2;
+            const charW = 4 * dotSpacing; // 5列，间距4段
+            const charH = 6 * dotSpacing; // 7行，间距6段
+            const charGap = 8;
+            const totalCharW = charW * 3 + charGap * 2;
+            const charStartX = sp.cx - totalCharW / 2;
+            const charStartY = startY + (digitH - charH) / 2;
+
+            const ledColor = CONSTANTS.COLORS.ledAmber;
+            for (let i = 0; i < 3; i++) {
+                const cx = charStartX + i * (charW + charGap);
+                this.drawDotMatrixChar(ctx, speedStr[i], cx, charStartY, dotSpacing, dotRadius, brightness, ledColor);
+            }
+
+            // === 6. LED 整体辉光（暖色琥珀光叠加层） ===
+            ctx.save();
+            ctx.beginPath();
+            UI.roundRect(ctx, bgX + 2, bgY + 2, bgW - 4, bgH - 4, innerR - 1);
+            ctx.clip();
+            ctx.globalCompositeOperation = 'screen';
+            ctx.globalAlpha = 0.1 * brightness;
+            const glowGrad = ctx.createRadialGradient(sp.cx, startY + digitH / 2, 5, sp.cx, startY + digitH / 2, bgW * 0.6);
+            glowGrad.addColorStop(0, 'rgba(255,160,60,1)');
+            glowGrad.addColorStop(1, 'rgba(255,100,30,0)');
+            ctx.fillStyle = glowGrad;
+            ctx.fillRect(bgX, bgY, bgW, bgH);
+            ctx.restore();
+
+            // === 7. 玻璃罩反光（共享方法） ===
+            this.drawLedBoxGlass(ctx, bgX, bgY, bgW, bgH, innerR);
+
+            // === 8. km/h 单位标注 ===
+            ctx.save();
+            ctx.font = '500 9px "Helvetica Neue", Arial, sans-serif';
+            ctx.fillStyle = 'rgba(130,130,140,0.5)';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillText('km/h', sp.cx, bgY + bgH + 5);
+            ctx.restore();
+        },
+
+        // 绘制档位指示器（与车速LED风格统一：7段LED + 金属边框）
+        drawGearIndicator(ctx, gearText) {
+            const sp = this.SP;
+            // 档位框尺寸
+            const boxW = 60;
+            const boxH = 72;
+            const boxX = sp.cx - boxW / 2;
+            const boxY = sp.cy + 95 + 48 + 10 + 12 + 8;
+
+            const bezelR = 10;
+            const innerR = 8;
+
+            // === 1-4. 静态金属边框+面板+内凹阴影（共享方法） ===
+            this.drawLedBoxChrome(ctx, boxX, boxY, boxW, boxH, bezelR, innerR, sp.cx);
+
+            // === 5. LED 点阵档位显示 ===
+            const dotSpacing = 7;
+            const dotRadius = 2.8;
+            const charW = 4 * dotSpacing;
+            const charH = 6 * dotSpacing;
+            const charX = sp.cx - charW / 2;
+            const charY = boxY + (boxH - charH) / 2;
+
+            const gearColor = CONSTANTS.COLORS.ledAmber;
+            this.drawDotMatrixChar(ctx, gearText, charX, charY, dotSpacing, dotRadius, 1, gearColor);
+
+            // === 6. 玻璃罩反光（共享方法） ===
+            this.drawLedBoxGlass(ctx, boxX, boxY, boxW, boxH, innerR);
+
+            // === 7. "GEAR" 小标注 ===
+            ctx.save();
+            ctx.font = '500 7px "Fraunces", Georgia, serif';
+            ctx.fillStyle = 'rgba(130,130,140,0.4)';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillText('GEAR', sp.cx, boxY + boxH + 3);
+            ctx.restore();
+        },
+
+        // 完整渲染仪表盘
+        renderSpeedometer() {
+            const canvas = this.elements.speedometerCanvas;
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const eng = SimulationEngine;
+            const maxSpeed = eng.speedometerMax;
+
+            // 高DPI支持：内部分辨率 = 800 * dpr，绘图坐标系仍为 800x800
+            const SIZE = 800;
+            const dpr = window.devicePixelRatio || 1;
+            if (canvas.width !== SIZE * dpr) {
+                canvas.width = SIZE * dpr;
+                canvas.height = SIZE * dpr;
+            }
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            // 绘制静态层（量程变化或车型类型变化时重绘）
+            const hasTach = eng.hasTachometer();
+            if (!this.speedometerStaticCanvas ||
+                this._lastStaticMaxSpeed !== maxSpeed ||
+                this._lastHasTach !== hasTach) {
+                this.drawSpeedometerStatic(maxSpeed);
+                this._lastStaticMaxSpeed = maxSpeed;
+                this._lastHasTach = hasTach;
+            }
+
+            // 清空并绘制静态层（指定逻辑尺寸以匹配高DPI源画布）
+            ctx.clearRect(0, 0, SIZE, SIZE);
+            ctx.drawImage(this.speedometerStaticCanvas, 0, 0, SIZE, SIZE);
+
+            // 绘制转速表动态层（仅燃油车）
+            if (hasTach) {
+                this.drawLedSegments(ctx, Math.max(0, eng.rpm));
+            }
+
+            // 绘制指针
+            this.drawNeedle(ctx, eng.speed, maxSpeed);
+
+            // 绘制7段LED数字车速
+            this.drawDigitalSpeed(ctx, eng.speed);
+
+            // 绘制档位指示器
+            this.drawGearIndicator(ctx, eng.getGearDisplay());
+
+            // 绘制中心帽
+            this.drawCenterCap(ctx);
+        },
+
+        // 更新速度表显示
+        updateSpeedometer() {
+            // Canvas 渲染仪表盘
+            this.renderSpeedometer();
+        },
+
+        // 更新车型信息
+        updateCarInfo(brand, car) {
+            this.elements.carName.textContent = `${brand} ${car.model}`;
+            this.elements.carYear.textContent = car.year;
+            this.elements.accelerationTime.textContent = `${car.acceleration}秒`;
+            this.elements.maxSpeed.textContent = `${car.maxSpeed} km/h`;
+
+            this.elements.carInfo.classList.remove('hidden');
+
+            // 右侧面板：详细参数
+            this.elements.specEngine.textContent = car.engine;
+            this.elements.specPower.textContent = car.power;
+            this.elements.specBrake.textContent = `${car.brakePerformance} 米`;
+
+            // 变速箱类型
+            let transmission;
+            if (car.isEV) {
+                transmission = '单速变速箱（电动车）';
+            } else if (car.shiftCount <= 1) {
+                transmission = 'E-CVT（混动）';
+            } else {
+                transmission = `${car.shiftCount}挡自动`;
+            }
+            this.elements.specTransmission.textContent = transmission;
+
+            // 动力类型
+            let type;
+            if (car.isEV) {
+                type = '纯电动';
+            } else if (car.engine.includes('电机') || car.engine.includes('混动') || car.engine.includes('48V')) {
+                type = '混合动力';
+            } else if (car.torqueCurve === 'linear') {
+                type = '自然吸气';
+            } else {
+                type = '涡轮增压';
+            }
+            this.elements.specType.textContent = type;
+
+            this.elements.specsPanel.classList.remove('hidden');
+            this.elements.specsPlaceholder.classList.add('hidden');
+        }
+    };
+
+    // ============================================================
+    // 控制器 - 事件绑定与协调
+    // ============================================================
+    const Controller = {
+        // 渲染循环 ID
+        renderFrame: null,
+
+        init() {
+            UI.cacheElements();
+            UI.populateBrandSelect();
+            // 初始渲染仪表盘（空状态）
+            UI.renderSpeedometer();
+
+            this.bindEvents();
+        },
+
+        // 按住式按钮事件绑定辅助函数（统一处理mouse/touch + is-pressed样式）
+        bindHoldButton(el, onStart, onStop) {
+            const press = (e) => { e.preventDefault(); el.classList.add('is-pressed'); onStart(); };
+            const release = () => { el.classList.remove('is-pressed'); onStop(); };
+            el.addEventListener('mousedown', press);
+            el.addEventListener('mouseup', release);
+            el.addEventListener('mouseleave', release);
+            el.addEventListener('touchstart', press, { passive: false });
+            el.addEventListener('touchend', release);
+            el.addEventListener('touchcancel', release);
+        },
+
+        bindEvents() {
+            const el = UI.elements;
+
+            // 品牌选择
+            el.brandSelect.addEventListener('change', () => this.handleBrandChange());
+
+            // 车型选择
+            el.modelSelect.addEventListener('change', () => this.handleModelChange());
+
+            // 油门按钮
+            this.bindHoldButton(el.accelerateBtn, () => this.startAcceleration(), () => this.stopAcceleration());
+
+            // 刹车按钮
+            this.bindHoldButton(el.brakeBtn, () => this.startBraking(), () => this.stopBraking());
+
+            // 移动端油门按钮
+            this.bindHoldButton(el.accelerateBtnMobile, () => this.startAcceleration(), () => this.stopAcceleration());
+
+            // 移动端刹车按钮
+            this.bindHoldButton(el.brakeBtnMobile, () => this.startBraking(), () => this.stopBraking());
+
+            // 键盘控制
+            document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+            document.addEventListener('keyup', (e) => this.handleKeyUp(e));
+        },
+
+        handleBrandChange() {
+            const brand = UI.elements.brandSelect.value;
+            const modelSelect = UI.elements.modelSelect;
+            modelSelect.innerHTML = '<option value="">选择车型</option>';
+
+            if (brand) {
+                modelSelect.disabled = false;
+                carData[brand].forEach((car, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = car.model;
+                    modelSelect.appendChild(option);
+                });
+            } else {
+                modelSelect.disabled = true;
+            }
+
+            UI.elements.carInfo.classList.add('hidden');
+            UI.elements.specsPanel.classList.add('hidden');
+            UI.elements.specsPlaceholder.classList.remove('hidden');
+            SimulationEngine.selectedCar = null;
+            UI.elements.accelerateBtn.disabled = true;
+            UI.elements.brakeBtn.disabled = true;
+            UI.elements.accelerateBtnMobile.disabled = true;
+            UI.elements.brakeBtnMobile.disabled = true;
+        },
+
+        handleModelChange() {
+            const brand = UI.elements.brandSelect.value;
+            const modelIndex = UI.elements.modelSelect.value;
+
+            // 切换车型时停止渲染循环（selectCar 已停止模拟循环并重置速度）
+            this.stopRenderLoop();
+
+            if (brand && modelIndex !== '') {
+                const car = carData[brand][modelIndex];
+                SimulationEngine.selectCar(car);
+                UI.updateCarInfo(brand, car);
+                // 仪表盘静态层会在renderSpeedometer中自动重绘（量程变化时）
+                UI.renderSpeedometer();
+
+                UI.elements.accelerateBtn.disabled = false;
+                UI.elements.brakeBtn.disabled = false;
+                UI.elements.accelerateBtnMobile.disabled = false;
+                UI.elements.brakeBtnMobile.disabled = false;
+            } else {
+                UI.elements.carInfo.classList.add('hidden');
+                SimulationEngine.selectedCar = null;
+                UI.elements.accelerateBtn.disabled = true;
+                UI.elements.brakeBtn.disabled = true;
+                UI.elements.accelerateBtnMobile.disabled = true;
+                UI.elements.brakeBtnMobile.disabled = true;
+            }
+        },
+
+        startAcceleration() {
+            SimulationEngine.startAcceleration();
+            this.startRenderLoop();
+        },
+
+        stopAcceleration() {
+            SimulationEngine.stopAcceleration();
+            if (SimulationEngine.speed > 0) {
+                // 滑行中
+            } else {
+                this.stopRenderLoop();
+            }
+        },
+
+        startBraking() {
+            SimulationEngine.startBraking();
+            this.startRenderLoop();
+        },
+
+        stopBraking() {
+            SimulationEngine.stopBraking();
+            if (SimulationEngine.speed > 0) {
+                // 滑行中
+            } else {
+                this.stopRenderLoop();
+            }
+        },
+
+        // 键盘控制
+        handleKeyDown(e) {
+            if (e.repeat) return;
+            const key = e.key.toLowerCase();
+
+            if ((key === 'w' || key === 'arrowup') && !SimulationEngine.isAccelerating) {
+                if (SimulationEngine.selectedCar) {
+                    e.preventDefault();
+                    this.startAcceleration();
+                    UI.elements.accelerateBtn?.classList.add('is-pressed');
+                    UI.elements.accelerateBtnMobile?.classList.add('is-pressed');
+                }
+            } else if ((key === 's' || key === 'arrowdown') && !SimulationEngine.isBraking) {
+                if (SimulationEngine.selectedCar && SimulationEngine.speed > 0) {
+                    e.preventDefault();
+                    this.startBraking();
+                    UI.elements.brakeBtn?.classList.add('is-pressed');
+                    UI.elements.brakeBtnMobile?.classList.add('is-pressed');
+                }
+            }
+        },
+
+        handleKeyUp(e) {
+            const key = e.key.toLowerCase();
+
+            if (key === 'w' || key === 'arrowup') {
+                this.stopAcceleration();
+                UI.elements.accelerateBtn?.classList.remove('is-pressed');
+                UI.elements.accelerateBtnMobile?.classList.remove('is-pressed');
+            } else if (key === 's' || key === 'arrowdown') {
+                this.stopBraking();
+                UI.elements.brakeBtn?.classList.remove('is-pressed');
+                UI.elements.brakeBtnMobile?.classList.remove('is-pressed');
+            }
+        },
+
+        // 按需渲染循环
+        startRenderLoop() {
+            if (this.renderFrame) return;
+            const render = () => {
+                UI.updateSpeedometer();
+                if (SimulationEngine.speed > 0 || SimulationEngine.isAccelerating || SimulationEngine.isBraking) {
+                    this.renderFrame = requestAnimationFrame(render);
+                } else {
+                    this.renderFrame = null;
+                }
+            };
+            this.renderFrame = requestAnimationFrame(render);
+        },
+
+        stopRenderLoop() {
+            if (this.renderFrame) {
+                cancelAnimationFrame(this.renderFrame);
+                this.renderFrame = null;
+            }
+            // 最终更新一次确保 UI 一致
+            UI.updateSpeedometer();
+        }
+    };
+
+    // ============================================================
+    // 启动
+    // ============================================================
+    Controller.init();
+    </script>
+    <div style="text-align:center; padding: 12px 0; font-size: 12px; color: #555; font-family: 'Inter', 'Noto Sans SC', sans-serif;">pedal.abetterplace2.live</div>
+</body>
+</html>
